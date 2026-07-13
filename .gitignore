@@ -1,0 +1,32 @@
+# Visual Studio
+.vs/
+Debug/
+Release/
+x64/
+x86/
+*.vcxproj.user
+*.suo
+*.user
+*.sln.docstates
+
+# Build outputs
+*.exe
+*.dll
+*.obj
+*.o
+*.pdb
+*.ilk
+*.lib
+*.exp
+*.manifest
+
+# SFML DLLs (不应该提交二进制库文件)
+# 如果 assets 里有字体/图片则保留
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Saves (可选 - 如果不想上传存档)
+# saves/*
+# !saves/.gitkeep
