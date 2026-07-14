@@ -79,6 +79,7 @@ protected:
 
 protected:
     void DrawDialogueBox(sf::RenderWindow& window);
+    void DrawMinimap(sf::RenderWindow& window);
 
     // 立绘
     std::unique_ptr<sf::Sprite> m_portraitNomal;

@@ -64,6 +64,7 @@ void Game::Run() {
         HandleSceneChange();
         UpdateBGM();
 
+
         m_window.setView(defaultView);
         m_window.clear(Colors::BG);
         UpdateView();
@@ -103,6 +104,21 @@ void Game::HandleSceneChange() {
     cur->Reset();
     SceneID next = static_cast<SceneID>(nextId);
     m_sceneManager.Replace(CreateScene(next, entryParam));
+}
+
+void Game::UpdateBGM() {
+    Scene* cur = m_sceneManager.Current();
+    if (!cur) return;
+
+    int targetBGM = cur->GetBGMId();
+    if (targetBGM == m_currentBGMScene) return;
+    m_currentBGMScene = targetBGM;
+
+    switch (targetBGM) {
+        case 0: m_audio.PlayBGM("bgm_gentle", true); break;   // 游戏场景
+        case 1: m_audio.StopBGM(); break;                      // 标题画面（无声或单独BGM）
+        default: break;
+    }
 }
 
 void Game::UpdateView() {
@@ -151,17 +167,4 @@ std::unique_ptr<Scene> Game::CreateScene(SceneID id, int entryParam) {
         }
     }
     return scene;
-}
-
-void Game::UpdateBGM() {
-    Scene* cur = m_sceneManager.Current();
-    if (!cur) return;
-    int targetBGM = cur->GetBGMId();
-    if (targetBGM == m_currentBGMScene) return;
-    m_currentBGMScene = targetBGM;
-    switch (targetBGM) {
-        case 0: m_audio.PlayBGM("bgm_gentle", true); break;
-        case 1: m_audio.StopBGM(); break;
-        default: break;
-    }
 }
