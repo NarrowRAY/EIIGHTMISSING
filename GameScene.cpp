@@ -516,9 +516,9 @@ void GameScene::Draw(sf::RenderWindow& window) {
             float gearY = 10.f;
             int mapW = m_tileMap.Width(), mapH = m_tileMap.Height();
             if (mapW > 0 && mapH > 0) {
-                float ts = std::min(150.f / mapW, 150.f / mapH);
-                float mmBottom = 10.f + ts * mapH + 8.f;
-                if (mmBottom > gearY) gearY = mmBottom + 8.f;
+                float ts = std::min(200.f / mapW, 200.f / mapH);
+                float mmBottom = 10.f + ts * mapH + 10.f;
+                if (mmBottom > gearY) gearY = mmBottom + 12.f;
             }
             shape.setSize({bs, bs});
             shape.setPosition({bx, gearY});
@@ -557,22 +557,22 @@ void GameScene::DrawMinimap(sf::RenderWindow& window) {
     int mapH = m_tileMap.Height();
     if (mapW <= 0 || mapH <= 0) return;
 
-    const float MM_MAX = 150.f;
-    const float MM_RIGHT = SCREEN_W - 70.f;
+    const float MM_MAX = 200.f;                      // 加大尺寸
+    const float MM_RIGHT = SCREEN_W - 60.f;          // 紧贴右侧
     float tileSz = std::min(MM_MAX / mapW, MM_MAX / mapH);
     float mmW = tileSz * mapW;
     float mmH = tileSz * mapH;
     float mmX = MM_RIGHT - mmW;
     float mmY = 10.f;
-    const float PAD = 4.f;
+    const float PAD = 6.f;
 
-    // 半透明背景 + 边框
+    // 半透明背景
     sf::RectangleShape bg;
     bg.setSize({mmW + PAD * 2, mmH + PAD * 2});
     bg.setPosition({mmX - PAD, mmY - PAD});
-    bg.setFillColor(sf::Color(0, 0, 0, 170));
-    bg.setOutlineColor(sf::Color(140, 140, 160, 200));
-    bg.setOutlineThickness(2.f);
+    bg.setFillColor(sf::Color(10, 10, 20, 210));
+    bg.setOutlineColor(sf::Color(255, 255, 255, 180));  // 白边框醒目
+    bg.setOutlineThickness(3.f);
     window.draw(bg);
 
     // 瓦片
@@ -583,18 +583,18 @@ void GameScene::DrawMinimap(sf::RenderWindow& window) {
             sf::Color c;
             auto type = static_cast<TileType>(t);
             switch (type) {
-                case TileType::Wall:           c = sf::Color(120, 120, 130); break;
-                case TileType::Door:           c = sf::Color(200, 140, 70);  break;
-                case TileType::Window:         c = sf::Color(100, 160, 220); break;
-                case TileType::Stairs:         c = sf::Color(180, 160, 90);  break;
-                case TileType::Void:           c = sf::Color(15, 15, 20);    break;
-                case TileType::Trap:           c = sf::Color(200, 50, 40);   break;
-                case TileType::BulletinBoard:  c = sf::Color(140, 120, 80);  break;
-                case TileType::KeypadLock:     c = sf::Color(140, 90, 160);  break;
-                case TileType::Display:        c = sf::Color(80, 150, 220);  break;
+                case TileType::Wall:           c = sf::Color(160, 155, 150); break;
+                case TileType::Door:           c = sf::Color(220, 160, 80);  break;
+                case TileType::Window:         c = sf::Color(130, 190, 240); break;
+                case TileType::Stairs:         c = sf::Color(200, 180, 100); break;
+                case TileType::Void:           c = sf::Color(10, 10, 15);    break;
+                case TileType::Trap:           c = sf::Color(220, 60, 50);   break;
+                case TileType::BulletinBoard:  c = sf::Color(200, 170, 100); break;
+                case TileType::KeypadLock:     c = sf::Color(180, 120, 200); break;
+                case TileType::Display:        c = sf::Color(100, 180, 240); break;
                 default:
-                    c = ::IsWalkable(t) ? sf::Color(45, 45, 55)
-                                        : sf::Color(80, 80, 90);
+                    c = ::IsWalkable(t) ? sf::Color(90, 85, 75)     // 浅色地板
+                                        : sf::Color(110, 105, 100);  // 浅色家具
                     break;
             }
             tile.setSize({tileSz, tileSz});
@@ -604,27 +604,28 @@ void GameScene::DrawMinimap(sf::RenderWindow& window) {
         }
     }
 
-    // 玩家位置
+    // 玩家位置（白色闪烁点）
     sf::Vector2f pp = m_player.GetPosition();
     float px = mmX + (pp.x / (mapW * TILE_SIZE)) * mmW;
     float py = mmY + (pp.y / (mapH * TILE_SIZE)) * mmH;
 
-    sf::CircleShape glow(5.f);
-    glow.setFillColor(sf::Color(100, 255, 100, 80));
-    glow.setOrigin({5.f, 5.f});
+    sf::CircleShape glow(6.f);
+    glow.setFillColor(sf::Color(255, 255, 255, 120));
+    glow.setOrigin({6.f, 6.f});
     glow.setPosition({px, py});
     window.draw(glow);
 
-    sf::CircleShape dot(3.f);
-    dot.setFillColor(sf::Color(100, 255, 100));
-    dot.setOrigin({3.f, 3.f});
+    sf::CircleShape dot(4.f);
+    dot.setFillColor(sf::Color(255, 60, 60));         // 红色醒目
+    dot.setOrigin({4.f, 4.f});
     dot.setPosition({px, py});
     window.draw(dot);
 
+    // 标题
     if (m_font) {
-        sf::Text label(*m_font, U("小地图"), 15);
-        label.setFillColor(sf::Color(160, 160, 180, 200));
-        label.setPosition({mmX, mmY - 19.f});
+        sf::Text label(*m_font, U("小地图"), 16);
+        label.setFillColor(sf::Color(255, 255, 255, 220));
+        label.setPosition({mmX, mmY - 22.f});
         window.draw(label);
     }
 }
