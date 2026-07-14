@@ -15,7 +15,8 @@ public:
     bool IsBlocked(int col, int row) const;
     // 强制可行走（不改贴图）
     void SetForceWalkable(int col, int row, bool walkable = true);
-
+    // 加载自定义PNG贴图覆盖程序化纹理（如教室门）
+    void LoadCustomTexture(TileType type, const std::string& filename);
     // 碰撞
     sf::Vector2f ResolveCollision(sf::Vector2f oldPos, sf::Vector2f newPos,
                                    float halfW, float halfH) const;

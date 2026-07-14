@@ -180,16 +180,17 @@ void TileMap::GenerateTextures() {
 
     // ---- Clock ----
     m_textures[static_cast<int>(TileType::Clock)] = makeTex([&](auto& p) {
-        int cx = S/2, cy = S/2, r = S/2 - 4;
+        int cx = S/2, cy = S/2, r = S/2 - 1;  // 几乎填满瓦片
         for (int y = 0; y < S; ++y) {
             for (int x = 0; x < S; ++x) {
                 int i = (y * S + x) * 4;
                 int dx = x - cx, dy = y - cy;
-                bool inCircle = (dx*dx + dy*dy) <= r*r;
-                bool border = std::abs(dx*dx + dy*dy - r*r) < r*4;
+                int d2 = dx*dx + dy*dy;
+                bool inCircle = d2 <= r*r;
+                bool border = d2 >= (r-3)*(r-3);  // 3px边框
                 if (border) { p[i]=50; p[i+1]=50; p[i+2]=55; }
                 else if (inCircle) { p[i]=235; p[i+1]=235; p[i+2]=235; }
-                else { p[i]=85; p[i+1]=85; p[i+2]=95; }
+                else { p[i]=85; p[i+1]=85; p[i+2]=95; }  // 背景同墙壁色
                 p[i+3]=255;
             }
         }
@@ -330,6 +331,17 @@ void TileMap::GenerateTextures() {
 }
 
 // ============================================================
+// 加载自定义PNG贴图，覆盖程序化纹理
+// ============================================================
+void TileMap::LoadCustomTexture(TileType type, const std::string& filename) {
+    sf::Texture tex;
+    if (tex.loadFromFile(filename)) {
+        tex.setSmooth(true);
+        m_textures[static_cast<int>(type)] = std::move(tex);
+    }
+}
+
+// ============================================================
 // 加载地图数据
 // ============================================================
 void TileMap::SetMapData(const MapData& data) {
@@ -435,14 +447,14 @@ void TileMap::Draw(sf::RenderWindow& window, float camX, float camY) const {
 
     sf::RectangleShape shape({TILE_SIZE, TILE_SIZE});
 
-    // ===== 第1遍：地板/楼梯/陷阱(可行走瓦片) =====
+    // ===== 第1遍：地板/陷阱（逐格渲染，纹理自洽） =====
     for (int row = sr; row < er; ++row) {
         for (int col = sc; col < ec; ++col) {
             int t = GetTile(col, row);
-            if (!::IsWalkable(t)) continue;
+            if (t != static_cast<int>(TileType::Floor)
+                && t != static_cast<int>(TileType::Trap)) continue;
             auto it = m_textures.find(t);
             if (it == m_textures.end()) continue;
-
             shape.setSize({TILE_SIZE, TILE_SIZE});
             shape.setPosition({col * 1.f * TILE_SIZE, row * 1.f * TILE_SIZE});
             shape.setTexture(&it->second);
@@ -450,19 +462,23 @@ void TileMap::Draw(sf::RenderWindow& window, float camX, float camY) const {
         }
     }
 
-    // ===== 第2遍：墙壁/门窗/家具 =====
+    // ===== 第2遍：其他所有（楼梯也在内，多格物件整块渲染） =====
+    std::vector<bool> rendered(static_cast<size_t>(m_width) * m_height, false);
+
     for (int row = sr; row < er; ++row) {
         for (int col = sc; col < ec; ++col) {
+            if (rendered[row * m_width + col]) continue;
             int t = GetTile(col, row);
             if (t == static_cast<int>(TileType::Void)) continue;
-            if (::IsWalkable(t)) continue;  // 地板类已在第1遍画过
+            if (t == static_cast<int>(TileType::Floor)
+                || t == static_cast<int>(TileType::Trap)) continue;  // 已在第1遍
 
             auto it = m_textures.find(t);
             if (it == m_textures.end()) continue;
 
+            // ---- 公告栏/密码锁：特殊半格渲染 ----
             if (t == static_cast<int>(TileType::BulletinBoard) ||
                 t == static_cast<int>(TileType::KeypadLock)) {
-                // 公告栏/密码锁：先画地板，再半格贴右边缘
                 auto fit = m_textures.find(static_cast<int>(TileType::Floor));
                 if (fit != m_textures.end()) {
                     shape.setSize({TILE_SIZE, TILE_SIZE});
@@ -474,12 +490,44 @@ void TileMap::Draw(sf::RenderWindow& window, float camX, float camY) const {
                 shape.setPosition({col * TILE_SIZE + TILE_SIZE / 2.f, row * TILE_SIZE * 1.f});
                 shape.setTexture(&it->second);
                 window.draw(shape);
-            } else {
+                rendered[row * m_width + col] = true;
+                continue;
+            }
+
+            // ---- 墙壁：逐格渲染（砖纹需要每格对齐） ----
+            if (t == static_cast<int>(TileType::Wall)) {
                 shape.setSize({TILE_SIZE, TILE_SIZE});
                 shape.setPosition({col * TILE_SIZE * 1.f, row * TILE_SIZE * 1.f});
                 shape.setTexture(&it->second);
                 window.draw(shape);
+                rendered[row * m_width + col] = true;
+                continue;
             }
+
+            // ---- 多格物件：找到矩形范围，整张纹理一次贴完 ----
+            int blockR = col;
+            while (blockR + 1 < m_width && GetTile(blockR + 1, row) == t
+                   && !rendered[row * m_width + (blockR + 1)]) blockR++;
+            int blockB = row;
+            bool full = true;
+            while (blockB + 1 < m_height && full) {
+                for (int cc = col; cc <= blockR; ++cc) {
+                    if (GetTile(cc, blockB + 1) != t
+                        || rendered[(blockB + 1) * m_width + cc]) { full = false; break; }
+                }
+                if (full) blockB++;
+            }
+
+            for (int rr = row; rr <= blockB; ++rr)
+                for (int cc = col; cc <= blockR; ++cc)
+                    rendered[rr * m_width + cc] = true;
+
+            float bw = static_cast<float>(blockR - col + 1) * TILE_SIZE;
+            float bh = static_cast<float>(blockB - row + 1) * TILE_SIZE;
+            shape.setSize({bw, bh});
+            shape.setPosition({col * TILE_SIZE * 1.f, row * TILE_SIZE * 1.f});
+            shape.setTexture(&it->second);
+            window.draw(shape);
         }
     }
 }

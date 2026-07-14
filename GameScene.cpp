@@ -36,33 +36,104 @@ void GameScene::StartDialogue(const std::vector<std::string>& lines, float delay
     if (delay > 0.f) {
         m_dialogueTimer = delay;
         m_pendingLines = lines;
+        m_pendingPortraits.clear();
     } else {
         m_dialogueLines = lines;
+        m_dialoguePortraits.clear();
         m_dialogueIndex = 0;
         m_dialogueTimer = 0.f;
         m_pendingLines.clear();
+        m_pendingPortraits.clear();
         m_typewriterPos = 0.f;
+        ApplyPortraitForLine();
     }
+}
+
+void GameScene::StartDialogue(const std::vector<std::string>& lines,
+                                const std::vector<Portrait>& portraits, float delay) {
+    if (delay > 0.f) {
+        m_dialogueTimer = delay;
+        m_pendingLines = lines;
+        m_pendingPortraits = portraits;
+    } else {
+        m_dialogueLines = lines;
+        m_dialoguePortraits = portraits;
+        m_dialogueIndex = 0;
+        m_dialogueTimer = 0.f;
+        m_pendingLines.clear();
+        m_pendingPortraits.clear();
+        m_typewriterPos = 0.f;
+        ApplyPortraitForLine();
+    }
+}
+
+void GameScene::ApplyPortraitForLine() {
+    if (m_dialogueIndex >= 0 && m_dialogueIndex < static_cast<int>(m_dialoguePortraits.size()))
+        m_currentPortrait = m_dialoguePortraits[m_dialogueIndex];
 }
 
 void GameScene::DrawDialogueBox(sf::RenderWindow& window) {
     if (!IsInDialogue()) return;
 
-    const float dlgW = 1200.f;
-    const float dlgH = 80.f;
-    const float dlgX = (SCREEN_W - dlgW) / 2.f;
-    const float dlgY = SCREEN_H - 150.f;
+    const float dlgH = 160.f;
+    const float dlgY = SCREEN_H - dlgH - 40.f;
 
-    sf::RectangleShape shape;
-    shape.setSize({dlgW, dlgH});
+    // ———— 立绘 ————
+    auto loadPortrait = [&](std::unique_ptr<sf::Sprite>& spr, sf::Texture& tex, const char* path) {
+        if (!spr && tex.loadFromFile(path)) {
+            tex.setSmooth(true);
+            spr = std::make_unique<sf::Sprite>(tex);
+            spr->setScale({500.f / tex.getSize().x, 500.f / tex.getSize().y});
+        }
+    };
+    loadPortrait(m_portraitNomal, m_portraitTexNomal, "assets/portraits/nomal.png");
+    loadPortrait(m_portraitSmile, m_portraitTexSmile, "assets/portraits/smile.png");
+    loadPortrait(m_portraitWhattt, m_portraitTexWhattt, "assets/portraits/whattt.png");
+
+    sf::Sprite* pSprite = nullptr;
+    switch (m_currentPortrait) {
+        case Portrait::Nomal:  pSprite = m_portraitNomal.get(); break;
+        case Portrait::Smile:  pSprite = m_portraitSmile.get(); break;
+        case Portrait::Whattt: pSprite = m_portraitWhattt.get(); break;
+        default: break;
+    }
+    if (pSprite) {
+        pSprite->setPosition({230.f, dlgY - 445.f});
+        window.draw(*pSprite);
+    }
+
+    // ———— 对话框 ————
+    const float dlgW = 1200.f;
+    const float dlgX = (SCREEN_W - dlgW) / 2.f;
+
+    // 砍角对话框（八边形）
+    const float corner = 20.f;  // 砍角大小
+    sf::ConvexShape shape(8);
+    shape.setPoint(0, {corner, 0.f});
+    shape.setPoint(1, {dlgW - corner, 0.f});
+    shape.setPoint(2, {dlgW, corner});
+    shape.setPoint(3, {dlgW, dlgH - corner});
+    shape.setPoint(4, {dlgW - corner, dlgH});
+    shape.setPoint(5, {corner, dlgH});
+    shape.setPoint(6, {0.f, dlgH - corner});
+    shape.setPoint(7, {0.f, corner});
     shape.setPosition({dlgX, dlgY});
-    shape.setFillColor(sf::Color(20, 20, 30, 230));
-    shape.setOutlineColor(sf::Color(180, 180, 200));
-    shape.setOutlineThickness(2.f);
+    shape.setFillColor(sf::Color(30, 30, 45, 180));
+    shape.setOutlineColor(sf::Color(200, 200, 220, 220));
+    shape.setOutlineThickness(4.f);
     window.draw(shape);
 
+    // 塑料反光条（顶部高光）
+    sf::ConvexShape glare(4);
+    glare.setPoint(0, {corner + 2.f, 2.f});
+    glare.setPoint(1, {dlgW - corner - 2.f, 2.f});
+    glare.setPoint(2, {dlgW - corner - 2.f, 10.f});
+    glare.setPoint(3, {corner + 2.f, 10.f});
+    glare.setPosition({dlgX, dlgY});
+    glare.setFillColor(sf::Color(255, 255, 255, 30));
+    window.draw(glare);
+
     if (m_font && m_dialogueIndex < static_cast<int>(m_dialogueLines.size())) {
-        // 打字机效果：只显示已打出的字符
         std::string full = m_dialogueLines[m_dialogueIndex];
         int visible = std::min(static_cast<int>(m_typewriterPos), static_cast<int>(full.size()));
         std::string shown = full.substr(0, visible);
@@ -115,9 +186,11 @@ void GameScene::TryInteract(const sf::RenderWindow& window) {
                 // 已打完 → 下一行
                 m_dialogueIndex++;
                 m_typewriterPos = 0.f;
+                ApplyPortraitForLine();
                 if (m_dialogueIndex >= static_cast<int>(m_dialogueLines.size())) {
                     m_dialogueIndex = -1;
                     m_dialogueLines.clear();
+                    m_currentPortrait = Portrait::None;
                 }
             }
         }
@@ -297,8 +370,10 @@ void GameScene::Update(float dt) {
         m_dialogueTimer -= dt;
         if (m_dialogueTimer <= 0.f) {
             m_dialogueLines = std::move(m_pendingLines);
+            m_dialoguePortraits = std::move(m_pendingPortraits);
             m_dialogueIndex = 0;
             m_typewriterPos = 0.f;
+            ApplyPortraitForLine();
         }
     }
 
@@ -317,12 +392,51 @@ void GameScene::Update(float dt) {
     if (m_choiceDialog.GetChoice() >= 0) {
         int c = m_choiceDialog.GetChoice();
         m_choiceDialog.ResetChoice();
-        // 设置菜单：0=继续游戏, 1=回到菜单
+
+        // ---- 确认弹窗结果（"是/否"） ----
+        if (m_pendingConfirm) {
+            m_pendingConfirm = false;
+            if (c == 0) {  // "是" → 展示结果
+                if (m_isCorrectClassroom) {
+                    m_classroomResult = ClassroomResult::Correct;
+                    m_choiceDialog.ShowInfoWide("呃我这样的屌丝也有走对教室的一天啊......");
+                } else {
+                    m_classroomResult = ClassroomResult::Wrong;
+                    m_choiceDialog.ShowInfoWide("病急也不能乱投医，你坐在陌生的天花板下任凭第一节课溜走。");
+                }
+            }
+            // c==1: "否" → 不做任何事，直接关闭
+            return;
+        }
+
+        // ---- 教室门选项结果 ----
+        if (m_doorDialogActive) {
+            m_doorDialogActive = false;
+            if (c == 1) {  // "这是我的教室" → 弹出确认弹窗
+                m_pendingConfirm = true;
+                m_choiceDialog.Show(
+                    "落座错误的教室将导致游戏结束，确认吗？",
+                    {"是", "否"}
+                );
+            }
+            // c==0: 教室名(纯信息,已关闭)  c==2: "这不是我的教室"
+            return;
+        }
+
+        // ---- 设置菜单：0=继续游戏, 1=回到菜单 ----
         if (c == 1) {
             m_nextScene = static_cast<int>(SceneID::Title);
             m_entryParam = 0;
             return;
         }
+    }
+
+    // ---- 教室结果信息面板关闭 → 回标题 ----
+    if (m_classroomResult != ClassroomResult::None && !m_choiceDialog.IsVisible()) {
+        m_classroomResult = ClassroomResult::None;
+        m_nextScene = static_cast<int>(SceneID::Title);
+        m_entryParam = 0;
+        return;
     }
 
     // 存档面板结果
@@ -432,7 +546,14 @@ void GameScene::Reset() {
     m_dialogueLines.clear();
     m_dialogueTimer = 0.f;
     m_pendingLines.clear();
+    m_pendingPortraits.clear();
+    m_dialoguePortraits.clear();
+    m_currentPortrait = Portrait::None;
     m_typewriterPos = 0.f;
     m_mouseWasDown = false;
     m_firstUpdate  = true;
+    m_doorDialogActive   = false;
+    m_pendingConfirm     = false;
+    m_classroomResult    = ClassroomResult::None;
+    m_isCorrectClassroom = false;
 }

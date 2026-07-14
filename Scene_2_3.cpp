@@ -2,6 +2,62 @@
 
 Scene_2_3::Scene_2_3(int entryParam) {
     LoadMap(BuildMapData(), GetSpawnPoint(entryParam));
+
+    // ———— 门精灵 ————
+    m_doorPositions = {
+        {2, 1},   // 左门 (cols2-3, rows1-3, 2×3)
+        {9, 1},   // 右门 (cols9-10, rows1-3, 2×3)
+    };
+
+    if (m_doorTex.loadFromFile("assets/textures/doors.png")) {
+        m_doorTex.setSmooth(true);
+        for (const auto& dp : m_doorPositions) {
+            auto spr = std::make_unique<sf::Sprite>(m_doorTex);
+            auto ts = m_doorTex.getSize();
+            float sx = (2.f * TILE_SIZE) / ts.x * 1.5f;
+            float sy = (3.f * TILE_SIZE) / ts.y * 1.5f;
+            bool isRight = (dp.x > 5);
+            if (isRight) {
+                spr->setOrigin({static_cast<float>(ts.x), static_cast<float>(ts.y)});
+                spr->setScale({-sx, sy});
+                spr->setPosition({dp.x * 1.f * TILE_SIZE - 20.f, dp.y * 1.f * TILE_SIZE + 158.f});
+            } else {
+                spr->setScale({sx, sy});
+                spr->setPosition({dp.x * 1.f * TILE_SIZE - 20.f, dp.y * 1.f * TILE_SIZE - 23.f});
+            }
+            m_doorSprites.push_back(std::move(spr));
+        }
+    }
+
+    // ———— 窗户精灵 (2×2 each) ————
+    m_windowPositions = {{4, 1}, {11, 1}};
+    if (m_windowTex.loadFromFile("assets/textures/window.png")) {
+        m_windowTex.setSmooth(true);
+        for (const auto& dp : m_windowPositions) {
+            auto spr = std::make_unique<sf::Sprite>(m_windowTex);
+            auto ts = m_windowTex.getSize();
+            float sx = (2.f * TILE_SIZE) / ts.x * 1.98f;
+            float sy = (2.f * TILE_SIZE) / ts.y * 1.98f;
+            spr->setScale({sx, sy});
+            spr->setPosition({dp.x * 1.f * TILE_SIZE + 10.f, dp.y * 1.f * TILE_SIZE - 13.f});
+            m_windowSprites.push_back(std::move(spr));
+        }
+    }
+
+    // ———— 打印机精灵 (col13, row8, 1×1) ————
+    m_printerPositions = {{13, 8}};
+    if (m_printerTex.loadFromFile("assets/textures/printer2.png")) {
+        m_printerTex.setSmooth(true);
+        for (const auto& dp : m_printerPositions) {
+            auto spr = std::make_unique<sf::Sprite>(m_printerTex);
+            auto ts = m_printerTex.getSize();
+            spr->setScale({(1.f * TILE_SIZE) / ts.x * 3.0f, (1.f * TILE_SIZE) / ts.y * 3.0f});
+            spr->setPosition({dp.x * 1.f * TILE_SIZE, dp.y * 1.f * TILE_SIZE - 40.f});
+            m_printerSprites.push_back(std::move(spr));
+        }
+    }
+    m_tileMap.SetBlocked(14, 8, true);
+
     if (entryParam == 0) {
         m_player.SetFacing(Direction::Left);
         LockInput(0.5f);
@@ -14,24 +70,24 @@ MapData Scene_2_3::BuildMapData() {
         //         1111111
         // 01234567890123456
         "#################", // 0  墙壁
-        "##DD#WW##DD#WW###", // 1  门+窗+门(cols9-10)+窗(cols12-13)
-        "##DD#WW##DD#WW###", // 2
-        "##DD#####DD######", // 3  门+门(无窗)
+        "#################", // 1  窗sprite
+        "#################", // 2
+        "#################", // 3
         "                 ", // 4  地板
         "                 ", // 5
         "                 ", // 6
         "                 ", // 7
-        "             P   ", // 8  打印机(col13)
+        "                 ", // 8  打印机sprite
     });
 }
 
 sf::Vector2f Scene_2_3::GetSpawnPoint(int entryParam) {
     if (entryParam == 1) return { TileMap::TileToPixel(2), TileMap::TileToPixel(6) };
-    return { TileMap::TileToPixel(15), TileMap::TileToPixel(6) };  // 从2-2来→右侧
+    return { TileMap::TileToPixel(15), TileMap::TileToPixel(6) };
 }
 
 sf::Vector2f Scene_2_3::GetSavePosition() {
-    return { TileMap::TileToPixel(11), TileMap::TileToPixel(8) };  // 打印机左两格
+    return { TileMap::TileToPixel(11), TileMap::TileToPixel(8) };
 }
 
 bool Scene_2_3::OnTileClick(int tile, int col, int row) {
@@ -41,21 +97,53 @@ bool Scene_2_3::OnTileClick(int tile, int col, int row) {
     float dy = (row + 0.5f) * TILE_SIZE - pp.y;
     if (std::sqrt(dx * dx + dy * dy) > 160.f) return false;
 
-    // 左门(cols2-3) → 204教室
-    if (tile == static_cast<int>(TileType::Door) && col <= 4) {
-        m_choiceDialog.Show(
-            "教室里熙熙攘攘",
-            {"204教室", "这是我的教室", "这不是我的教室"}
-        );
-        return true;
+    // 打印机 (col13, row8)
+    for (const auto& dp : m_printerPositions) {
+        (void)dp;
+        float bx = 14.f * TILE_SIZE, by = 8.f * TILE_SIZE;
+        float bw = 1.f * TILE_SIZE, bh = 1.f * TILE_SIZE;
+        float cx = (col + 0.5f) * TILE_SIZE, cy = (row + 0.5f) * TILE_SIZE;
+        if (cx >= bx && cx < bx + bw && cy >= by && cy < by + bh) {
+            m_savePanel.Show(true);
+            return true;
+        }
     }
-    // 右门(cols9-10) → 206教室
-    if (tile == static_cast<int>(TileType::Door) && col >= 8) {
-        m_choiceDialog.Show(
-            "里面的寥寥数人表情严肃地坐着",
-            {"206教室", "这是我的教室", "这不是我的教室"}
-        );
-        return true;
+
+    // 左门(cols2-3, rows1-3) → 204教室
+    for (const auto& dp : m_doorPositions) {
+        if (dp.x > 5) continue;  // 只检查左门
+        float bx = dp.x * 1.f * TILE_SIZE;
+        float by = dp.y * 1.f * TILE_SIZE;
+        float bw = 2.f * TILE_SIZE;
+        float bh = 3.f * TILE_SIZE;
+        float cx = (col + 0.5f) * TILE_SIZE;
+        float cy = (row + 0.5f) * TILE_SIZE;
+        if (cx >= bx && cx < bx + bw && cy >= by && cy < by + bh) {
+            ShowDoorChoice(
+                "教室里熙熙攘攘",
+                {"204教室", "这是我的教室", "这不是我的教室"},
+                true
+            );
+            return true;
+        }
+    }
+    // 右门(cols9-10, rows1-3) → 206教室
+    for (const auto& dp : m_doorPositions) {
+        if (dp.x < 5) continue;
+        float bx = dp.x * 1.f * TILE_SIZE;
+        float by = dp.y * 1.f * TILE_SIZE;
+        float bw = 2.f * TILE_SIZE;
+        float bh = 3.f * TILE_SIZE;
+        float cx = (col + 0.5f) * TILE_SIZE;
+        float cy = (row + 0.5f) * TILE_SIZE;
+        if (cx >= bx && cx < bx + bw && cy >= by && cy < by + bh) {
+            ShowDoorChoice(
+                "里面的寥寥数人表情严肃地坐着",
+                {"206教室", "这是我的教室", "这不是我的教室"},
+                false
+            );
+            return true;
+        }
     }
     return false;
 }
@@ -65,9 +153,79 @@ void Scene_2_3::CheckExits() {
     int col = TileMap::PixelToTile(pos.x);
     int row = TileMap::PixelToTile(pos.y);
 
-    // 右边缘(col16) → 2-2
     if (col >= 16 && row >= 3) {
         m_nextScene  = static_cast<int>(SceneID::Corridor2_2);
         m_entryParam = 1;
+    }
+}
+
+void Scene_2_3::Draw(sf::RenderWindow& window) {
+    window.setView(m_camera);
+    sf::Vector2f cam = m_camera.getCenter();
+    m_tileMap.Draw(window, cam.x, cam.y);
+    for (const auto& spr : m_doorSprites)
+        window.draw(*spr);
+    for (const auto& spr : m_windowSprites)
+        window.draw(*spr);
+    for (const auto& spr : m_printerSprites)
+        window.draw(*spr);
+    m_player.Draw(window);
+
+    if (m_font) {
+        sf::Vector2f pos = m_player.GetPosition();
+        int col = TileMap::PixelToTile(pos.x);
+        int row = TileMap::PixelToTile(pos.y);
+        int tile = m_tileMap.GetTileAtPixel(pos.x, pos.y);
+        auto off = m_player.GetHitOffset();
+        std::string info = "col:" + std::to_string(col)
+                         + " row:" + std::to_string(row)
+                         + " tile:" + std::to_string(tile)
+                         + " off:" + std::to_string(static_cast<int>(off.x))
+                         + "," + std::to_string(static_cast<int>(off.y));
+        sf::Text dbg(*m_font, U(info), 18);
+        dbg.setFillColor(sf::Color::White);
+        dbg.setOutlineColor(sf::Color::Black);
+        dbg.setOutlineThickness(1.f);
+        dbg.setPosition({cam.x - SCREEN_W / 2.f + 10.f, cam.y - SCREEN_H / 2.f + 10.f});
+        window.draw(dbg);
+    }
+
+    {
+        sf::View uiView({SCREEN_W / 2.f, SCREEN_H / 2.f}, {SCREEN_W, SCREEN_H});
+        window.setView(uiView);
+        bool hasModal = IsInDialogue() || m_passwordUI.IsVisible() || m_choiceDialog.IsVisible() || m_savePanel.IsVisible();
+        if (hasModal) {
+            if (IsInDialogue())            DrawDialogueBox(window);
+            if (m_passwordUI.IsVisible())  m_passwordUI.Draw(window);
+            if (m_choiceDialog.IsVisible()) m_choiceDialog.Draw(window);
+            if (m_savePanel.IsVisible())   m_savePanel.Draw(window);
+        }
+        if (!IsInDialogue() && m_dialogueTimer <= 0.f) {
+            sf::RectangleShape shape;
+            const float bx = SCREEN_W - 60.f, by = 10.f, bs = 50.f;
+            shape.setSize({bs, bs});
+            shape.setPosition({bx, by});
+            shape.setFillColor(sf::Color(50, 50, 60, 200));
+            shape.setOutlineColor(sf::Color(150, 150, 170));
+            shape.setOutlineThickness(2.f);
+            window.draw(shape);
+            float gcx = bx + bs / 2.f, gcy = by + bs / 2.f;
+            sf::CircleShape circle(10.f);
+            circle.setFillColor(sf::Color(200, 200, 220));
+            circle.setOrigin({10.f, 10.f});
+            circle.setPosition({gcx, gcy});
+            window.draw(circle);
+            for (int i = 0; i < 6; ++i) {
+                float angle = i * 3.14159f / 3.f;
+                float sx = gcx + std::cos(angle) * 16.f;
+                float sy = gcy + std::sin(angle) * 16.f;
+                sf::RectangleShape tooth(sf::Vector2f(10.f, 4.f));
+                tooth.setFillColor(sf::Color(200, 200, 220));
+                tooth.setOrigin({5.f, 2.f});
+                tooth.setPosition({sx, sy});
+                tooth.setRotation(sf::radians(angle));
+                window.draw(tooth);
+            }
+        }
     }
 }

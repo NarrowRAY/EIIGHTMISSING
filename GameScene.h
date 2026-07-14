@@ -8,6 +8,8 @@
 
 class GameScene : public Scene {
 public:
+    enum class Portrait { None, Nomal, Smile, Whattt };
+
     GameScene() = default;
     virtual ~GameScene() = default;
 
@@ -37,12 +39,21 @@ protected:
     virtual void OnSceneEnter() {}  // 子类重写，首次进入时触发
     // 子类专属瓦片交互（返回 true 表示已处理）
     virtual bool OnTileClick(int tile, int col, int row) { (void)tile; (void)col; (void)row; return false; }
+    // 教室门选项弹窗（isCorrect: 是否为正确的早八教室）
+    void ShowDoorChoice(const std::string& text, const std::vector<std::string>& opts, bool isCorrect) {
+        m_doorDialogActive     = true;
+        m_isCorrectClassroom   = isCorrect;
+        m_choiceDialog.Show(text, opts);
+    }
     // 存档位置调整（子类可重写，让读档时出生在指定位置）
     virtual sf::Vector2f GetSavePosition() { return m_player.GetPosition(); }
 
     // 对话系统
     void StartDialogue(const std::vector<std::string>& lines, float delay = 0.f);
+    void StartDialogue(const std::vector<std::string>& lines,
+                       const std::vector<Portrait>& portraits, float delay = 0.f);
     bool IsInDialogue() const { return m_dialogueIndex >= 0; }
+    void ShowPortrait(Portrait p) { m_currentPortrait = p; }
 
 public:
     // 密码锁状态
@@ -60,18 +71,38 @@ protected:
     SavePanel      m_savePanel;
     int            m_sceneId = 0;
 
+protected:
+    void DrawDialogueBox(sf::RenderWindow& window);
+
+    // 立绘
+    std::unique_ptr<sf::Sprite> m_portraitNomal;
+    std::unique_ptr<sf::Sprite> m_portraitSmile;
+    std::unique_ptr<sf::Sprite> m_portraitWhattt;
+    sf::Texture m_portraitTexNomal, m_portraitTexSmile, m_portraitTexWhattt;
+    Portrait m_currentPortrait = Portrait::None;
+
+    // 对话状态（子类 Draw 需要读取）
+    float m_dialogueTimer = 0.f; // 延迟计时器
+
 private:
     void TryInteract(const sf::RenderWindow& window);
-    void DrawDialogueBox(sf::RenderWindow& window);
+    void ApplyPortraitForLine();
     bool m_mouseWasDown = false;
     bool m_firstUpdate  = true;
     float m_inputLockTimer = 0.f;  // 输入锁定时长
 
-    // 对话状态
     std::vector<std::string> m_dialogueLines;
-    int   m_dialogueIndex = -1;  // -1=无对话
-    float m_dialogueTimer = 0.f; // 延迟计时器
-    std::vector<std::string> m_pendingLines; // 等待中的台词
-    float m_typewriterPos = 0.f; // 当前行已显示字符数（浮点，用于平滑计时）
-    static constexpr float TYPE_SPEED = 40.f; // 每秒显示字符数
+    std::vector<Portrait>  m_dialoguePortraits; // 每行对应立绘
+    int   m_dialogueIndex = -1;
+    std::vector<std::string> m_pendingLines;
+    std::vector<Portrait>  m_pendingPortraits;
+    float m_typewriterPos = 0.f;
+    static constexpr float TYPE_SPEED = 40.f;
+
+    // 教室门弹窗链状态（三跳：门选项 → 确认弹窗 → 结果信息 → 标题）
+    enum class ClassroomResult { None, Wrong, Correct };
+    bool            m_doorDialogActive   = false;
+    bool            m_pendingConfirm     = false;  // 等待确认弹窗("是/否")结果
+    bool            m_isCorrectClassroom = false;
+    ClassroomResult m_classroomResult    = ClassroomResult::None;
 };

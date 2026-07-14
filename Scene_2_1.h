@@ -1,4 +1,6 @@
 #pragma once
+#include <memory>
+#include <vector>
 #include "GameScene.h"
 
 class Scene_2_1 : public GameScene {
@@ -11,4 +13,11 @@ protected:
     void         CheckExits() override;
     sf::Vector2f GetSavePosition() override;
     bool         OnTileClick(int tile, int col, int row) override;
+    void         Draw(sf::RenderWindow& window) override;
+
+private:
+    // 打印机精灵
+    std::vector<sf::Vector2i> m_printerPositions;
+    sf::Texture               m_printerTex;
+    std::vector<std::unique_ptr<sf::Sprite>> m_printerSprites;
 };
