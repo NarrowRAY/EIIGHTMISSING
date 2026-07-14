@@ -1,6 +1,7 @@
 #include "Scene_2_3.h"
 
 Scene_2_3::Scene_2_3(int entryParam) {
+    m_bgmId = 0;
     LoadMap(BuildMapData(), GetSpawnPoint(entryParam));
 
     // ———— 门精灵 ————

@@ -4,15 +4,17 @@
 #include <string>
 #include <vector>
 
+class AudioManager;
+
 // ============================================================
 // PasswordUI — 密码锁弹窗（暗色遮罩 + 底部对话框 + 中央键盘）
-// 所有绘制使用逻辑屏幕坐标 (1920×1080)
 // ============================================================
 class PasswordUI {
 public:
     PasswordUI();
 
     void SetFont(const sf::Font* font) { m_font = font; }
+    void SetAudio(AudioManager* audio) { m_audio = audio; }
 
     void Show();
     void Hide();
@@ -42,6 +44,7 @@ private:
     std::string m_input;          // 已输入的数字串
     std::string m_errorText;      // 错误提示
     const sf::Font* m_font = nullptr;
+    AudioManager* m_audio = nullptr;
     std::vector<Btn> m_buttons;
 
     static constexpr const char* CORRECT_PW = "1024";

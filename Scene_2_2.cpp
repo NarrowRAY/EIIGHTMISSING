@@ -1,6 +1,7 @@
 #include "Scene_2_2.h"
 
 Scene_2_2::Scene_2_2(int entryParam) {
+    m_bgmId = 0;
     LoadMap(BuildMapData(), GetSpawnPoint(entryParam));
     if (entryParam == 0) {
         m_player.SetFacing(Direction::Down);

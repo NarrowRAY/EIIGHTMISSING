@@ -2,6 +2,7 @@
 
 Scene_Dream::Scene_Dream(int entryParam) {
     (void)entryParam;
+    m_bgmId = 0;
     LoadMap(BuildMapData(), GetSpawnPoint(0));
 
     // ———— 门精灵 ————

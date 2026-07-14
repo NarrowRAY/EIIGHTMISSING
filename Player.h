@@ -14,6 +14,7 @@ public:
     sf::Vector2f GetPosition() const { return m_spritePos; }
     sf::Vector2f GetHitOffset() const { return m_hitOffset; }
     Direction   GetFacing()   const { return m_facing; }
+    bool        IsMoving()    const { return m_wasMoving; }
 
     void HandleInput();
     void Update(float dt);

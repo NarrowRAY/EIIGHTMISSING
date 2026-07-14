@@ -15,6 +15,7 @@
 Game::Game() {
     InitWindow();
     InitFont();
+    InitAudio();
     m_sceneManager.Push(std::make_unique<TitleScene>(&m_font));
 }
 
@@ -25,6 +26,10 @@ void Game::InitWindow() {
     // 禁用输入法，防止 WASD 触发中文输入
     HWND hwnd = m_window.getNativeHandle();
     ImmAssociateContext(hwnd, nullptr);
+}
+
+void Game::InitAudio() {
+    m_audio.Init();
 }
 
 void Game::InitFont() {
@@ -57,6 +62,7 @@ void Game::Run() {
         }
 
         HandleSceneChange();
+        UpdateBGM();
 
         m_window.setView(defaultView);
         m_window.clear(Colors::BG);
@@ -135,6 +141,7 @@ std::unique_ptr<Scene> Game::CreateScene(SceneID id, int entryParam) {
     }
     if (auto* gs = dynamic_cast<GameScene*>(scene.get())) {
         gs->SetFont(&m_font);
+        gs->SetAudio(&m_audio);
         gs->SetSceneID(static_cast<int>(id));
         // 读档：直接设置玩家位置（LoadMap 已在构造函数中执行，需覆盖）
         if (SavePanel::HasPendingLoad()) {
@@ -144,4 +151,17 @@ std::unique_ptr<Scene> Game::CreateScene(SceneID id, int entryParam) {
         }
     }
     return scene;
+}
+
+void Game::UpdateBGM() {
+    Scene* cur = m_sceneManager.Current();
+    if (!cur) return;
+    int targetBGM = cur->GetBGMId();
+    if (targetBGM == m_currentBGMScene) return;
+    m_currentBGMScene = targetBGM;
+    switch (targetBGM) {
+        case 0: m_audio.PlayBGM("bgm_gentle", true); break;
+        case 1: m_audio.StopBGM(); break;
+        default: break;
+    }
 }

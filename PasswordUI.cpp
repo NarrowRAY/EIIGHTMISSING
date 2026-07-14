@@ -1,4 +1,5 @@
 #include "PasswordUI.h"
+#include "AudioManager.h"
 
 PasswordUI::PasswordUI() {
     BuildLayout();

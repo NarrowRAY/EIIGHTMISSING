@@ -1,6 +1,7 @@
 #include "Scene_Stairwell1.h"
 
 Scene_Stairwell1::Scene_Stairwell1(int entryParam) {
+    m_bgmId = 0;
     LoadMap(BuildMapData(), GetSpawnPoint(entryParam));
     // 楼梯顶行(row7,cols17-21)阻挡，不可踩
     for (int c = 17; c <= 21; ++c) m_tileMap.SetBlocked(c, 7);

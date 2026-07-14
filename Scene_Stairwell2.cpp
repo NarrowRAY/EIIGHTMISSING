@@ -1,6 +1,7 @@
 #include "Scene_Stairwell2.h"
 
 Scene_Stairwell2::Scene_Stairwell2(int entryParam) {
+    m_bgmId = 0;
     LoadMap(BuildMapData(), GetSpawnPoint(entryParam));
     // 门(cols4-5,row5)强制可行走
     m_tileMap.SetForceWalkable(4, 5);

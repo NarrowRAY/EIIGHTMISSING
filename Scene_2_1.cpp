@@ -1,6 +1,7 @@
 #include "Scene_2_1.h"
 
 Scene_2_1::Scene_2_1(int entryParam) {
+    m_bgmId = 0;
     LoadMap(BuildMapData(), GetSpawnPoint(entryParam));
     // 右门(row4-5,col14,B瓦片贴右墙)强制可行走
     m_tileMap.SetForceWalkable(14, 4);

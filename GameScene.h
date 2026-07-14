@@ -5,6 +5,7 @@
 #include "PasswordUI.h"
 #include "ChoiceDialog.h"
 #include "SavePanel.h"
+#include "AudioManager.h"
 
 class GameScene : public Scene {
 public:
@@ -18,6 +19,10 @@ public:
         m_passwordUI.SetFont(font);
         m_choiceDialog.SetFont(font);
         m_savePanel.SetFont(font);
+    }
+    void SetAudio(AudioManager* audio) {
+        m_audio = audio;
+        m_passwordUI.SetAudio(audio);
     }
     void SetPlayerPosition(sf::Vector2f pos) { m_player.SetPosition(pos); }
     void SetPlayerFacing(Direction dir) { m_player.SetFacing(dir); }
@@ -69,6 +74,7 @@ protected:
     PasswordUI     m_passwordUI;
     ChoiceDialog   m_choiceDialog;
     SavePanel      m_savePanel;
+    AudioManager*  m_audio = nullptr;
     int            m_sceneId = 0;
 
 protected:

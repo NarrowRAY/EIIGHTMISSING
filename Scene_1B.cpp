@@ -3,6 +3,7 @@
 
 Scene_1B::Scene_1B(int entryParam) {
     m_entryParam = entryParam;
+    m_bgmId = 0;
     LoadMap(BuildMapData(), GetSpawnPoint(entryParam));
 
     // ———— 门精灵系统 ————
