@@ -11,7 +11,4 @@ protected:
     void         CheckExits() override;
     void         OnSceneEnter() override;
     bool         OnTileClick(int tile, int col, int row) override;
-
-private:
-    int m_entryParam = 0;
 };

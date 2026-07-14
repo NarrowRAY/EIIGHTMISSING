@@ -70,6 +70,7 @@ protected:
 private:
     void TryInteract(const sf::RenderWindow& window);
     void DrawDialogueBox(sf::RenderWindow& window);
+    void DrawMinimap(sf::RenderWindow& window);
     bool m_mouseWasDown = false;
     bool m_firstUpdate  = true;
     float m_inputLockTimer = 0.f;  // 输入锁定时长

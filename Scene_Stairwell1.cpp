@@ -71,7 +71,7 @@ bool Scene_Stairwell1::OnTileClick(int tile, int col, int row) {
 
     // 杂物
     if (tile == static_cast<int>(TileType::Debris)) {
-        StartDialogue({"一堆杂物，乱糟糟的"});
+        StartDialogue({"不知道谁丢在这里的杂物，积了厚厚一层灰。"});
         return true;
     }
     // 贩卖机
@@ -93,6 +93,6 @@ void Scene_Stairwell1::Update(float dt) {
     // 垃圾桶对话结束后弹出纸条
     if (m_pendingNote && !IsInDialogue()) {
         m_pendingNote = false;
-        m_choiceDialog.ShowInfo("小纸条（内容待补充）");
+        m_choiceDialog.ShowInfo("一张皱巴巴的纸条，上面歪歪扭扭地写着：\n「密码是 0831，别告诉别人。」\n背面还有一行小字：「开学日。」");
     }
 }

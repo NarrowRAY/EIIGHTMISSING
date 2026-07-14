@@ -46,7 +46,7 @@ bool Scene_2_3::OnTileClick(int tile, int col, int row) {
     if (tile == static_cast<int>(TileType::Door) && col <= 4) {
         m_choiceDialog.Show(
             "教室里熙熙攘攘",
-            {"204教室", "这是我的教室", "这不是我的教室"}
+            {"进去看看", "应该不是这间", "再看看别的"}
         );
         return true;
     }
@@ -54,7 +54,7 @@ bool Scene_2_3::OnTileClick(int tile, int col, int row) {
     if (tile == static_cast<int>(TileType::Door) && col >= 8) {
         m_choiceDialog.Show(
             "里面的寥寥数人表情严肃地坐着",
-            {"206教室", "这是我的教室", "这不是我的教室"}
+            {"进去看看", "应该不是这间", "再看看别的"}
         );
         return true;
     }

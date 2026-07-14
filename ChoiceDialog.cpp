@@ -175,15 +175,7 @@ void ChoiceDialog::Draw(sf::RenderWindow& window) {
             ));
             window.draw(text);
 
-            // 待贴图提示
-            sf::Text hint(*m_font, U("（待贴图）"), 22);
-            hint.setFillColor(sf::Color(150, 150, 180));
-            sf::FloatRect hb = hint.getLocalBounds();
-            hint.setPosition(sf::Vector2f(
-                px + (pw - hb.size.x) / 2.f,
-                py + ph / 2.f
-            ));
-            window.draw(hint);
+            // （贴图位 — 待后续添加）
         }
 
         return;
@@ -239,15 +231,7 @@ void ChoiceDialog::Draw(sf::RenderWindow& window) {
             ));
             window.draw(text);
 
-            // 待贴图提示
-            sf::Text hint(*m_font, U("（待贴图）"), 22);
-            hint.setFillColor(sf::Color(150, 150, 180));
-            sf::FloatRect hb = hint.getLocalBounds();
-            hint.setPosition(sf::Vector2f(
-                px + (pw - hb.size.x) / 2.f,
-                py + ph / 2.f
-            ));
-            window.draw(hint);
+            // （贴图位 — 待后续添加）
         }
 
         return;

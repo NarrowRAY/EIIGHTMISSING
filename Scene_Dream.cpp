@@ -49,7 +49,7 @@ bool Scene_Dream::OnTileClick(int tile, int col, int row) {
     if (tile == static_cast<int>(TileType::Door) && col <= 10) {
         m_choiceDialog.Show(
             "教室里坐满了人...",
-            {"106教室", "这是我的教室", "这不是我的教室"}
+            {"进去看看", "应该不是这间", "再看看别的"}
         );
         return true;
     }
@@ -57,7 +57,7 @@ bool Scene_Dream::OnTileClick(int tile, int col, int row) {
     if (tile == static_cast<int>(TileType::Door) && col >= 17) {
         m_choiceDialog.Show(
             "教室里零星有人入座...",
-            {"108教室", "这是我的教室", "这不是我的教室"}
+            {"进去看看", "应该不是这间", "再看看别的"}
         );
         return true;
     }

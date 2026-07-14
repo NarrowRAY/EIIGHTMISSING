@@ -196,7 +196,7 @@ void GameScene::TryInteract(const sf::RenderWindow& window) {
                 float dy = (r + 0.5f) * TILE_SIZE - pp.y;
                 if (std::sqrt(dx * dx + dy * dy) <= 160.f) {
                     if (m_audio) m_audio->PlaySFX("interact");
-                    m_choiceDialog.ShowInfoWide("公告栏（密码锁线索2）");
+                    m_choiceDialog.ShowInfoWide("公告栏上贴满了社团招新海报，角落有一张褪色的通知：\n「楼道门禁密码请咨询教务处。」\n但有人用圆珠笔在下面写了几个数字……开头好像是 08。");
                 }
                 return;
             }
@@ -235,7 +235,7 @@ void GameScene::TryInteract(const sf::RenderWindow& window) {
                     float dy = (r + 0.5f) * TILE_SIZE - pp.y;
                     if (std::sqrt(dx * dx + dy * dy) <= 160.f) {
                         if (m_audio) m_audio->PlaySFX("interact");
-                        m_choiceDialog.ShowInfo("密码锁线索1");
+                        m_choiceDialog.ShowInfo("透过窗户能看到教室里的挂钟，\n时间停在了 8:31。");
                     }
                     return;
                 }
@@ -374,31 +374,14 @@ void GameScene::Draw(sf::RenderWindow& window) {
     m_tileMap.Draw(window, cam.x, cam.y);
     m_player.Draw(window);
 
-    // 调试信息
-    if (m_font) {
-        sf::Vector2f pos = m_player.GetPosition();
-        int col = TileMap::PixelToTile(pos.x);
-        int row = TileMap::PixelToTile(pos.y);
-        int tile = m_tileMap.GetTileAtPixel(pos.x, pos.y);
-        auto off = m_player.GetHitOffset();
-        std::string info = "col:" + std::to_string(col)
-                         + " row:" + std::to_string(row)
-                         + " tile:" + std::to_string(tile)
-                         + " off:" + std::to_string(static_cast<int>(off.x))
-                         + "," + std::to_string(static_cast<int>(off.y));
-
-        sf::Text dbg(*m_font, U(info), 18);
-        dbg.setFillColor(sf::Color::White);
-        dbg.setOutlineColor(sf::Color::Black);
-        dbg.setOutlineThickness(1.f);
-        dbg.setPosition({cam.x - SCREEN_W / 2.f + 10.f, cam.y - SCREEN_H / 2.f + 10.f});
-        window.draw(dbg);
-    }
-
     // UI 叠加层（屏幕视图）
     {
         sf::View uiView({SCREEN_W / 2.f, SCREEN_H / 2.f}, {SCREEN_W, SCREEN_H});
         window.setView(uiView);
+
+        // 小地图（右上角）
+        DrawMinimap(window);
+
         bool hasModal = IsInDialogue() || m_passwordUI.IsVisible() || m_choiceDialog.IsVisible() || m_savePanel.IsVisible();
         if (hasModal) {
             if (IsInDialogue())            DrawDialogueBox(window);
@@ -406,18 +389,28 @@ void GameScene::Draw(sf::RenderWindow& window) {
             if (m_choiceDialog.IsVisible()) m_choiceDialog.Draw(window);
             if (m_savePanel.IsVisible())   m_savePanel.Draw(window);
         }
-        // 设置齿轮图标（非对话+非对话等待时显示）
+        // 设置齿轮图标（非对话+非对话等待时显示，小地图下方）
         if (!IsInDialogue() && m_dialogueTimer <= 0.f) {
             sf::RectangleShape shape;
-            const float bx = SCREEN_W - 60.f, by = 10.f, bs = 50.f;
+            const float bx = SCREEN_W - 60.f, bs = 50.f;
+
+            // 如果小地图区域会与齿轮重叠，将齿轮下移
+            float gearY = 10.f;
+            int mapW = m_tileMap.Width();
+            int mapH = m_tileMap.Height();
+            if (mapW > 0 && mapH > 0) {
+                float tileSz = std::min(150.f / mapW, 150.f / mapH);
+                float mmBottom = 10.f + tileSz * mapH + 8.f;
+                if (mmBottom > gearY) gearY = mmBottom + 8.f;
+            }
             shape.setSize({bs, bs});
-            shape.setPosition({bx, by});
+            shape.setPosition({bx, gearY});
             shape.setFillColor(sf::Color(50, 50, 60, 200));
             shape.setOutlineColor(sf::Color(150, 150, 170));
             shape.setOutlineThickness(2.f);
             window.draw(shape);
 
-            float cx = bx + bs / 2.f, cy = by + bs / 2.f;
+            float cx = bx + bs / 2.f, cy = gearY + bs / 2.f;
             sf::CircleShape circle(10.f);
             circle.setFillColor(sf::Color(200, 200, 220));
             circle.setOrigin({10.f, 10.f});
@@ -436,6 +429,91 @@ void GameScene::Draw(sf::RenderWindow& window) {
                 window.draw(tooth);
             }
         }
+    }
+}
+
+// ============================================================
+// 小地图（右上角，仿元气骑士风格）
+// ============================================================
+void GameScene::DrawMinimap(sf::RenderWindow& window) {
+    int mapW = m_tileMap.Width();
+    int mapH = m_tileMap.Height();
+    if (mapW <= 0 || mapH <= 0) return;
+
+    const float MM_MAX = 150.f;                      // 最大边长
+    const float MM_RIGHT = SCREEN_W - 70.f;          // 右侧留70给齿轮按钮
+    float tileSz = std::min(MM_MAX / mapW, MM_MAX / mapH);
+    float mmW = tileSz * mapW;
+    float mmH = tileSz * mapH;
+    float mmX = MM_RIGHT - mmW;                      // 右对齐
+    float mmY = 10.f;                                // 顶部
+    const float PAD = 4.f;
+
+    // ---- 半透明背景 + 边框 ----
+    sf::RectangleShape bg;
+    bg.setSize({mmW + PAD * 2, mmH + PAD * 2});
+    bg.setPosition({mmX - PAD, mmY - PAD});
+    bg.setFillColor(sf::Color(0, 0, 0, 170));
+    bg.setOutlineColor(sf::Color(140, 140, 160, 200));
+    bg.setOutlineThickness(2.f);
+    window.draw(bg);
+
+    // ---- 瓦片 ----
+    sf::RectangleShape tile;
+    for (int row = 0; row < mapH; ++row) {
+        for (int col = 0; col < mapW; ++col) {
+            int t = m_tileMap.GetTile(col, row);
+            sf::Color c;
+            auto type = static_cast<TileType>(t);
+            switch (type) {
+                case TileType::Wall:           c = sf::Color(120, 120, 130); break;
+                case TileType::Door:           c = sf::Color(200, 140, 70);  break;
+                case TileType::Window:         c = sf::Color(100, 160, 220); break;
+                case TileType::Stairs:         c = sf::Color(180, 160, 90);  break;
+                case TileType::Void:           c = sf::Color(15, 15, 20);    break;
+                case TileType::Trap:           c = sf::Color(200, 50, 40);   break;
+                case TileType::BulletinBoard:  c = sf::Color(140, 120, 80);  break;
+                case TileType::KeypadLock:     c = sf::Color(140, 90, 160);  break;
+                case TileType::Display:        c = sf::Color(80, 150, 220);  break;
+                default:
+                    if (::IsWalkable(t))
+                        c = sf::Color(45, 45, 55);   // 地板暗色
+                    else
+                        c = sf::Color(80, 80, 90);   // 家具等
+                    break;
+            }
+            tile.setSize({tileSz, tileSz});
+            tile.setPosition({mmX + col * tileSz, mmY + row * tileSz});
+            tile.setFillColor(c);
+            window.draw(tile);
+        }
+    }
+
+    // ---- 玩家位置（绿色脉冲圆点） ----
+    sf::Vector2f pp = m_player.GetPosition();
+    float px = mmX + (pp.x / (mapW * TILE_SIZE)) * mmW;
+    float py = mmY + (pp.y / (mapH * TILE_SIZE)) * mmH;
+
+    // 外圈光晕
+    sf::CircleShape glow(5.f);
+    glow.setFillColor(sf::Color(100, 255, 100, 80));
+    glow.setOrigin({5.f, 5.f});
+    glow.setPosition({px, py});
+    window.draw(glow);
+
+    // 核心亮点
+    sf::CircleShape dot(3.f);
+    dot.setFillColor(sf::Color(100, 255, 100));
+    dot.setOrigin({3.f, 3.f});
+    dot.setPosition({px, py});
+    window.draw(dot);
+
+    // ---- 标题 ----
+    if (m_font) {
+        sf::Text label(*m_font, U("小地图"), 15);
+        label.setFillColor(sf::Color(160, 160, 180, 200));
+        label.setPosition({mmX, mmY - 19.f});
+        window.draw(label);
     }
 }
 

@@ -50,7 +50,7 @@ bool Scene_1B::OnTileClick(int tile, int col, int row) {
 
     // 电子显示屏
     if (tile == static_cast<int>(TileType::Display)) {
-        m_choiceDialog.ShowInfo("教室使用情况");
+        m_choiceDialog.ShowInfo("电子屏上滚动着今天的教室安排……\n可我连自己是哪个班的都忘了。");
         return true;
     }
 
@@ -61,7 +61,7 @@ bool Scene_1B::OnTileClick(int tile, int col, int row) {
         if (std::sqrt(dx * dx + dy * dy) <= 160.f) {
             m_choiceDialog.Show(
                 "教室里坐满了人...",
-                {"106教室", "这是我的教室", "这不是我的教室"}
+                {"进去看看", "应该不是这间", "再看看别的"}
             );
             return true;
         }
@@ -73,7 +73,7 @@ bool Scene_1B::OnTileClick(int tile, int col, int row) {
         if (std::sqrt(dx * dx + dy * dy) <= 160.f) {
             m_choiceDialog.Show(
                 "教室里零星有人入座...",
-                {"108教室", "这是我的教室", "这不是我的教室"}
+                {"进去看看", "应该不是这间", "再看看别的"}
             );
             return true;
         }
