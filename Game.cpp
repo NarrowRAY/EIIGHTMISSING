@@ -118,11 +118,8 @@ void Game::UpdateBGM() {
     if (targetBGM == m_currentBGMScene) return;
     m_currentBGMScene = targetBGM;
 
-    switch (targetBGM) {
-        case 0: m_audio.PlayBGM("bgm_gentle", true); break;   // 游戏场景
-        case 1: m_audio.StopBGM(); break;                      // 标题画面（无声或单独BGM）
-        default: break;
-    }
+    if (targetBGM == 0)
+        m_audio.PlayBGM("bgm_gentle", true);
 }
 
 void Game::UpdateView() {

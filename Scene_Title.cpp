@@ -2,6 +2,7 @@
 #include "Constants.h"
 
 TitleScene::TitleScene(const sf::Font* font) : m_font(font) {
+    m_bgmId = 0;
     m_loadPanel.SetFont(font);
 
     // 背景图

@@ -167,6 +167,9 @@ bool Scene_2_3::OnTileClick(int tile, int col, int row) {
     return false;
 }
 
+void Scene_2_3::OnBadEnd()  { m_showBadEnd = true; }
+void Scene_2_3::OnGoodEnd() { m_showGoodEnd = true; }
+
 void Scene_2_3::CheckExits() {
     sf::Vector2f pos = m_player.GetPosition();
     int col = TileMap::PixelToTile(pos.x);

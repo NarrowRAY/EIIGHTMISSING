@@ -820,6 +820,8 @@ bool Scene_1B::OnTileClick(int tile, int col, int row) {
     return false;
 }
 
+void Scene_1B::OnBadEnd() { m_showBadEnd = true; }
+
 void Scene_1B::OnSceneEnter() {
     if (m_entryParam != 0) return;  // 非首次进入（如从楼梯间返回）不触发
     StartDialogue({

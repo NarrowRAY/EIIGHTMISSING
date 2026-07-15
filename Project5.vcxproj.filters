@@ -18,5 +18,113 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Game.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TileMap.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="GameScene.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene_Title.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene_1B.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene_Stairwell1.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene_Stairwell2.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene_2_1.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene_2_2.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene_2_3.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene_Dream.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="PasswordUI.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ChoiceDialog.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="SavePanel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AudioManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Constants.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Game.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="TileMap.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="GameScene.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene_Title.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene_1B.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene_Stairwell1.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene_Stairwell2.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene_2_1.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene_2_2.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene_2_3.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene_Dream.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="PasswordUI.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ChoiceDialog.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SavePanel.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

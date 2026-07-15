@@ -6,8 +6,8 @@
 class Scene_2_3 : public GameScene {
 public:
     explicit Scene_2_3(int entryParam);
-    void OnGoodEnd() override { m_showGoodEnd = true; }
-    void OnBadEnd()  override { m_showBadEnd = true; }
+    void OnGoodEnd() override;
+    void OnBadEnd()  override;
 
 protected:
     MapData      BuildMapData();
