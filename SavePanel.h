@@ -50,6 +50,9 @@ private:
     bool m_visible   = false;
     bool m_saveMode  = true;   // true=存档, false=读档
     int  m_result    = -1;
+    int  m_confirmSlot = -1;   // 读档模式下选中待确认的槽位
+    sf::FloatRect m_panelRect;
+    sf::FloatRect m_btnLoad, m_btnDelete;  // "载入"/"删除"按钮
     const sf::Font* m_font = nullptr;
     std::vector<SlotRect> m_slots;
 

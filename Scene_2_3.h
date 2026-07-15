@@ -6,6 +6,8 @@
 class Scene_2_3 : public GameScene {
 public:
     explicit Scene_2_3(int entryParam);
+    void OnGoodEnd() override { m_showGoodEnd = true; }
+    void OnBadEnd()  override { m_showBadEnd = true; }
 
 protected:
     MapData      BuildMapData();
@@ -30,4 +32,13 @@ private:
     std::vector<sf::Vector2i> m_printerPositions;
     sf::Texture               m_printerTex;
     std::vector<std::unique_ptr<sf::Sprite>> m_printerSprites;
+
+    // GoodEnd / BadEnd CG 全屏贴图
+    sf::Texture m_goodEndTex;
+    std::unique_ptr<sf::Sprite> m_goodEndSprite;
+    bool m_showGoodEnd = false;
+
+    sf::Texture m_badEndTex;
+    std::unique_ptr<sf::Sprite> m_badEndSprite;
+    bool m_showBadEnd = false;
 };

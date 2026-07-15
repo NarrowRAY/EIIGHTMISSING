@@ -150,29 +150,47 @@ void Scene_Stairwell2::Draw(sf::RenderWindow& window) {
         if (!IsInDialogue() && m_dialogueTimer <= 0.f) {
             sf::RectangleShape shape;
             const float bx = SCREEN_W - 60.f, by = 10.f, bs = 50.f;
-            shape.setSize({bs, bs});
-            shape.setPosition({bx, by});
-            shape.setFillColor(sf::Color(50, 50, 60, 200));
-            shape.setOutlineColor(sf::Color(150, 150, 170));
-            shape.setOutlineThickness(2.f);
-            window.draw(shape);
-            float gcx = bx + bs / 2.f, gcy = by + bs / 2.f;
-            sf::CircleShape circle(10.f);
-            circle.setFillColor(sf::Color(200, 200, 220));
-            circle.setOrigin({10.f, 10.f});
-            circle.setPosition({gcx, gcy});
-            window.draw(circle);
-            for (int i = 0; i < 6; ++i) {
-                float angle = i * 3.14159f / 3.f;
-                float sx = gcx + std::cos(angle) * 16.f;
-                float sy = gcy + std::sin(angle) * 16.f;
-                sf::RectangleShape tooth(sf::Vector2f(10.f, 4.f));
-                tooth.setFillColor(sf::Color(200, 200, 220));
-                tooth.setOrigin({5.f, 2.f});
-                tooth.setPosition({sx, sy});
-                tooth.setRotation(sf::radians(angle));
+            const float cx = bx + bs / 2.f, cy = by + bs / 2.f;
+
+            // 背景：砍角方形（暖白配色）
+            sf::ConvexShape bg(8);
+            const float c2 = 8.f;
+            bg.setPoint(0, {c2, 0.f}); bg.setPoint(1, {bs - c2, 0.f});
+            bg.setPoint(2, {bs, c2}); bg.setPoint(3, {bs, bs - c2});
+            bg.setPoint(4, {bs - c2, bs}); bg.setPoint(5, {c2, bs});
+            bg.setPoint(6, {0.f, bs - c2}); bg.setPoint(7, {0.f, c2});
+            bg.setPosition({bx, by});
+            bg.setFillColor(sf::Color(240, 235, 225, 220));
+            bg.setOutlineColor(sf::Color(160, 145, 120, 180));
+            bg.setOutlineThickness(1.5f);
+            window.draw(bg);
+
+            // 齿轮：8齿 + 外环 + 中心圆
+            const float outerR = 16.f, innerR = 11.f, toothLen = outerR - innerR;
+            const sf::Color gearColor(100, 85, 65);
+            for (int i = 0; i < 8; ++i) {
+                float a = i * 3.14159265f * 2.f / 8.f;
+                float mx = cx + std::cos(a) * (innerR + toothLen / 2.f);
+                float my = cy + std::sin(a) * (innerR + toothLen / 2.f);
+                sf::RectangleShape tooth({5.f, toothLen + 2.f});
+                tooth.setFillColor(gearColor);
+                tooth.setOrigin({2.5f, toothLen / 2.f + 1.f});
+                tooth.setPosition({mx, my});
+                tooth.setRotation(sf::radians(a + 3.14159265f / 2.f));
                 window.draw(tooth);
             }
+            sf::CircleShape ring(innerR);
+            ring.setOrigin({innerR, innerR});
+            ring.setPosition({cx, cy});
+            ring.setFillColor(sf::Color::Transparent);
+            ring.setOutlineColor(gearColor);
+            ring.setOutlineThickness(3.f);
+            window.draw(ring);
+            sf::CircleShape hub(5.f);
+            hub.setOrigin({5.f, 5.f});
+            hub.setPosition({cx, cy});
+            hub.setFillColor(gearColor);
+            window.draw(hub);
         }
     }
 }

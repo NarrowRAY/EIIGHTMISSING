@@ -53,6 +53,16 @@ protected:
     // 存档位置调整（子类可重写，让读档时出生在指定位置）
     virtual sf::Vector2f GetSavePosition() { return m_player.GetPosition(); }
 
+    // 结局 CG 回调（子类重写以显示对应 CG）
+    virtual void OnBadEnd()  {}
+    virtual void OnGoodEnd() {}
+
+    // CG 全屏贴图
+    void ShowCG(const std::string& path);
+    void HideCG();
+    bool IsCGVisible() const { return m_cgSprite != nullptr; }
+    void DrawCG(sf::RenderWindow& window) const;
+
     // 对话系统
     void StartDialogue(const std::vector<std::string>& lines, float delay = 0.f);
     void StartDialogue(const std::vector<std::string>& lines,
@@ -76,6 +86,10 @@ protected:
     SavePanel      m_savePanel;
     AudioManager*  m_audio = nullptr;
     int            m_sceneId = 0;
+
+    // CG 全屏贴图
+    sf::Texture m_cgTex;
+    std::unique_ptr<sf::Sprite> m_cgSprite;
 
 protected:
     void DrawDialogueBox(sf::RenderWindow& window);

@@ -20,4 +20,8 @@ private:
     std::vector<sf::Vector2i> m_printerPositions;
     sf::Texture               m_printerTex;
     std::vector<std::unique_ptr<sf::Sprite>> m_printerSprites;
+
+    // 施工标识精灵
+    sf::Texture m_signTex;
+    std::unique_ptr<sf::Sprite> m_signSprite;
 };

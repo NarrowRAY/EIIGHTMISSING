@@ -150,28 +150,28 @@ void TileMap::GenerateTextures() {
         }
     });
 
-    // ---- BulletinBoard (墙挂式黑板) ----
+    // ---- BulletinBoard (墙挂式深棕公告栏) ----
     m_textures[static_cast<int>(TileType::BulletinBoard)] = makeTex([&](auto& p) {
         for (int y = 0; y < S; ++y) {
             for (int x = 0; x < S; ++x) {
                 int i = (y * S + x) * 4;
-                // 黑色黑板
-                p[i]=35; p[i+1]=35; p[i+2]=40;
-                // 白色粉笔标记
-                if (x % 12 == 4 && y % 8 == 2) { p[i]=200; p[i+1]=200; p[i+2]=195; }
+                // 深棕色底板
+                p[i]=65; p[i+1]=40; p[i+2]=25;
+                // 米色粉笔标记
+                if (x % 12 == 4 && y % 8 == 2) { p[i]=220; p[i+1]=210; p[i+2]=190; }
                 p[i+3]=255;
             }
         }
     });
 
-    // ---- KeypadLock (密码锁，外观同公告栏) ----
+    // ---- KeypadLock (密码锁，深色面板) ----
     m_textures[static_cast<int>(TileType::KeypadLock)] = makeTex([&](auto& p) {
         for (int y = 0; y < S; ++y) {
             for (int x = 0; x < S; ++x) {
                 int i = (y * S + x) * 4;
                 // 深色面板
                 p[i]=35; p[i+1]=35; p[i+2]=40;
-                // 白色粉笔标记（与公告栏一致）
+                // 白色标记
                 if (x % 12 == 4 && y % 8 == 2) { p[i]=200; p[i+1]=200; p[i+2]=195; }
                 p[i+3]=255;
             }

@@ -91,27 +91,6 @@ Scene_Dream::Scene_Dream(int entryParam) {
             m_tileMap.SetBlocked(c, r, true);
 
     // ———— 打印机 ————
-    m_printerPositions = {{0, 10}};
-    if (m_printerTex.loadFromFile("assets/textures/printer1.png")) {
-        m_printerTex.setSmooth(true);
-        for (const auto& dp : m_printerPositions) {
-            auto spr = std::make_unique<sf::Sprite>(m_printerTex);
-            auto ts = m_printerTex.getSize();
-            spr->setScale({(1.f * TILE_SIZE) / ts.x * 3.75f, (1.f * TILE_SIZE) / ts.y * 3.75f});
-            spr->setPosition({dp.x * 1.f * TILE_SIZE - 45.f, dp.y * 1.f * TILE_SIZE - 50.f});
-            m_printerSprites.push_back(std::move(spr));
-        }
-    }
-    // 梦境存档打印机 (col26, row12)
-    {
-        auto spr = std::make_unique<sf::Sprite>(m_printerTex);
-        auto ts = m_printerTex.getSize();
-        spr->setScale({(1.f * TILE_SIZE) / ts.x * 3.0f, (1.f * TILE_SIZE) / ts.y * 3.0f});
-        spr->setPosition({26.f * TILE_SIZE, 12.f * TILE_SIZE - 50.f});
-        m_printerSprites.push_back(std::move(spr));
-    }
-    m_tileMap.SetBlocked(26, 12, true);
-
     // 手机弹窗素材
     if (m_phoneTex.loadFromFile("assets/textures/phone.png")) {
         m_phoneTex.setSmooth(true);
@@ -146,7 +125,10 @@ void Scene_Dream::ShuffleMessages() {
 
 void Scene_Dream::CheckPuzzle() {
     if (m_msgOrder[0] == 0 && m_msgOrder[1] == 1 && m_msgOrder[2] == 2) {
-        m_phoneSolved = true;
+        if (!m_phoneSolved) {
+            m_phoneSolved = true;
+            m_phoneSolvedTimer = 0.7f;  // 0.7秒延迟
+        }
     }
 }
 
@@ -161,11 +143,12 @@ sf::FloatRect Scene_Dream::GetSlotRect(int i) const {
     float marginX = pr.size.x * 0.12f;
     float slotW  = pr.size.x - marginX * 2.f;
     // 裁掉透明边距：按图片内容的实际文字高度算
-    float contentRatio = 0.28f;  // 实际文字区占宽比
+    float contentRatio = 0.48f;
     float slotH  = slotW * contentRatio;
     float totalH = slotH * 3.f;
     float topPad = (pr.size.y - totalH) / 2.f;
-    return {{pr.position.x + marginX, pr.position.y + topPad + i * slotH},
+    float yOffs[3] = { 100.f - 15.f, 0.f, -60.f };  // msg1下移85, msg3上移60
+    return {{pr.position.x + marginX, pr.position.y + topPad + i * slotH + yOffs[i]},
             {pr.size.x - marginX * 2.f, slotH}};
 }
 
@@ -204,26 +187,22 @@ bool Scene_Dream::OnTileClick(int tile, int col, int row) {
     float dy = (row + 0.5f) * TILE_SIZE - pp.y;
     if (std::sqrt(dx * dx + dy * dy) > 160.f) return false;
 
-    // 显示屏
-    for (const auto& dp : m_displayPositions) {
-        (void)dp;
-        float bx = 14.f * TILE_SIZE - 20.f;
-        float by = 8.f * TILE_SIZE;
-        float bw = 2.f * TILE_SIZE * 1.5f;
-        float bh = 3.f * TILE_SIZE * 1.2f;
-        float cx = (col + 0.5f) * TILE_SIZE;
-        float cy = (row + 0.5f) * TILE_SIZE;
-        if (cx >= bx && cx < bx + bw && cy >= by && cy < by + bh) {
-            m_showPhone = true;
-            return true;
+    // 显示屏（对话中/延迟中不可交互）
+    if (!IsInDialogue() && m_dialogueTimer <= 0.f) {
+        for (const auto& dp : m_displayPositions) {
+            (void)dp;
+            float bx = 14.f * TILE_SIZE - 20.f;
+            float by = 8.f * TILE_SIZE;
+            float bw = 2.f * TILE_SIZE * 1.5f;
+            float bh = 3.f * TILE_SIZE * 1.2f;
+            float cx = (col + 0.5f) * TILE_SIZE;
+            float cy = (row + 0.5f) * TILE_SIZE;
+            if (cx >= bx && cx < bx + bw && cy >= by && cy < by + bh) {
+                m_showPhone = true;
+                return true;
+            }
         }
     }
-    // 存档打印机 (col26, row12)
-    if (col == 26 && row == 12) {
-        m_savePanel.Show(true);
-        return true;
-    }
-
     // 沙发
     for (const auto& dp : m_sofaPositions) {
         (void)dp;
@@ -259,8 +238,29 @@ void Scene_Dream::HandleInput(const sf::RenderWindow& window) {
         sf::Vector2f mpos = window.mapPixelToCoords(mp, uiView);
 
         if (m_phoneSolved) {
-            if (down && !m_phoneClickWasDown) m_showPhone = false;
-            m_phoneClickWasDown = down;
+            if (m_phoneSolvedTimer > 0.f) { m_phoneSolvedTimer -= 0.016f; return; }
+            if (!m_msgTrueShown) {
+                m_msgTrueShown = true;
+                m_msgTrueTimer = 2.0f;  // 停留2秒
+                return;
+            }
+            if (m_msgTrueTimer > 0.f) { m_msgTrueTimer -= 0.016f; return; }
+            // 2秒后弹对话框
+            if (!m_dreamDialogueDone) {
+                StartDialogue({"哎？！这是调课通知吗？"}, {Portrait::Whattt});
+                m_dreamDialogueDone = true;
+            }
+            // 对话中：转发点击给基类
+            if (IsInDialogue()) {
+                GameScene::HandleInput(window);
+                return;
+            }
+            // 对话结束后0.7秒切回2-2
+            m_dreamExitTimer += 0.016f;
+            if (m_dreamExitTimer >= 0.7f) {
+                m_nextScene = static_cast<int>(SceneID::Corridor2_2);
+                m_entryParam = 2;
+            }
             return;
         }
 
@@ -308,7 +308,6 @@ void Scene_Dream::Draw(sf::RenderWindow& window) {
     for (const auto& spr : m_displaySprites) window.draw(*spr);
     for (const auto& spr : m_windowSprites) window.draw(*spr);
     for (const auto& spr : m_sofaSprites) window.draw(*spr);
-    for (const auto& spr : m_printerSprites) window.draw(*spr);
     m_player.Draw(window);
 
     // 调试
@@ -346,15 +345,30 @@ void Scene_Dream::Draw(sf::RenderWindow& window) {
             window.draw(bg);
             window.draw(*m_phoneSprite);
 
-            if (m_phoneSolved && m_msgTrueSprite && m_msgTrueTex.getSize().x > 0) {
-                auto pr = GetPhoneRect();
-                float mw = pr.size.x * 0.84f;
-                float mh = mw / m_msgTrueTex.getSize().x * m_msgTrueTex.getSize().y;
-                m_msgTrueSprite->setScale({mw / m_msgTrueTex.getSize().x, mh / m_msgTrueTex.getSize().y});
-                m_msgTrueSprite->setPosition({pr.position.x + (pr.size.x - mw) / 2.f,
-                                              pr.position.y + (pr.size.y - mh) / 2.f});
-                window.draw(*m_msgTrueSprite);
-            } else if (!m_phoneSolved) {
+            if (m_phoneSolved) {
+                if (m_phoneSolvedTimer > 0.f) {
+                    // 延迟期间：显示三条消息正序
+                    for (int i = 0; i < 3; ++i) {
+                        auto sr = GetSlotRect(i);
+                        if (!m_msgSprites[i]) continue;
+                        auto& tex = m_msgTex[i];
+                        float s = std::min(sr.size.x / tex.getSize().x, sr.size.y / tex.getSize().y);
+                        float w = tex.getSize().x * s, h = tex.getSize().y * s;
+                        m_msgSprites[i]->setScale({s, s});
+                        m_msgSprites[i]->setPosition({sr.position.x + (sr.size.x - w) / 2.f, sr.position.y});
+                        window.draw(*m_msgSprites[i]);
+                    }
+                } else if (m_msgTrueSprite && m_msgTrueTex.getSize().x > 0) {
+                    // 延迟后：仅显示成功提示
+                    auto pr = GetPhoneRect();
+                    float mw = pr.size.x * 0.46f;
+                    float mh = mw / m_msgTrueTex.getSize().x * m_msgTrueTex.getSize().y;
+                    m_msgTrueSprite->setScale({mw / m_msgTrueTex.getSize().x, mh / m_msgTrueTex.getSize().y});
+                    m_msgTrueSprite->setPosition({pr.position.x + (pr.size.x - mw) / 2.f,
+                                                  pr.position.y + (pr.size.y - mh) / 2.f});
+                    window.draw(*m_msgTrueSprite);
+                }
+            } else {
                 // 渲染三个消息槽位
                 for (int i = 0; i < 3; ++i) {
                     auto sr = GetSlotRect(i);
@@ -366,7 +380,7 @@ void Scene_Dream::Draw(sf::RenderWindow& window) {
                     float w = tex.getSize().x * s, h = tex.getSize().y * s;
                     m_msgSprites[mi]->setScale({s, s});
                     m_msgSprites[mi]->setPosition({sr.position.x + (sr.size.x - w) / 2.f,
-                                                    sr.position.y + (sr.size.y - h) / 2.f});
+                                                    sr.position.y});
                     window.draw(*m_msgSprites[mi]);
                 }
                 // 渲染拖拽中的消息
@@ -397,32 +411,50 @@ void Scene_Dream::Draw(sf::RenderWindow& window) {
             if (m_choiceDialog.IsVisible()) m_choiceDialog.Draw(window);
             if (m_savePanel.IsVisible())   m_savePanel.Draw(window);
         }
-        if (!IsInDialogue() && m_dialogueTimer <= 0.f) {
+        if (!m_showPhone && !IsInDialogue() && m_dialogueTimer <= 0.f) {
             sf::RectangleShape shape;
             const float bx = SCREEN_W - 60.f, by = 10.f, bs = 50.f;
-            shape.setSize({bs, bs});
-            shape.setPosition({bx, by});
-            shape.setFillColor(sf::Color(50, 50, 60, 200));
-            shape.setOutlineColor(sf::Color(150, 150, 170));
-            shape.setOutlineThickness(2.f);
-            window.draw(shape);
-            float gcx = bx + bs / 2.f, gcy = by + bs / 2.f;
-            sf::CircleShape circle(10.f);
-            circle.setFillColor(sf::Color(200, 200, 220));
-            circle.setOrigin({10.f, 10.f});
-            circle.setPosition({gcx, gcy});
-            window.draw(circle);
-            for (int i = 0; i < 6; ++i) {
-                float angle = i * 3.14159f / 3.f;
-                float sx = gcx + std::cos(angle) * 16.f;
-                float sy = gcy + std::sin(angle) * 16.f;
-                sf::RectangleShape tooth(sf::Vector2f(10.f, 4.f));
-                tooth.setFillColor(sf::Color(200, 200, 220));
-                tooth.setOrigin({5.f, 2.f});
-                tooth.setPosition({sx, sy});
-                tooth.setRotation(sf::radians(angle));
+            const float cx = bx + bs / 2.f, cy = by + bs / 2.f;
+
+            // 背景：砍角方形（暖白配色）
+            sf::ConvexShape bg(8);
+            const float c2 = 8.f;
+            bg.setPoint(0, {c2, 0.f}); bg.setPoint(1, {bs - c2, 0.f});
+            bg.setPoint(2, {bs, c2}); bg.setPoint(3, {bs, bs - c2});
+            bg.setPoint(4, {bs - c2, bs}); bg.setPoint(5, {c2, bs});
+            bg.setPoint(6, {0.f, bs - c2}); bg.setPoint(7, {0.f, c2});
+            bg.setPosition({bx, by});
+            bg.setFillColor(sf::Color(240, 235, 225, 220));
+            bg.setOutlineColor(sf::Color(160, 145, 120, 180));
+            bg.setOutlineThickness(1.5f);
+            window.draw(bg);
+
+            // 齿轮：8齿 + 外环 + 中心圆
+            const float outerR = 16.f, innerR = 11.f, toothLen = outerR - innerR;
+            const sf::Color gearColor(100, 85, 65);
+            for (int i = 0; i < 8; ++i) {
+                float a = i * 3.14159265f * 2.f / 8.f;
+                float mx = cx + std::cos(a) * (innerR + toothLen / 2.f);
+                float my = cy + std::sin(a) * (innerR + toothLen / 2.f);
+                sf::RectangleShape tooth({5.f, toothLen + 2.f});
+                tooth.setFillColor(gearColor);
+                tooth.setOrigin({2.5f, toothLen / 2.f + 1.f});
+                tooth.setPosition({mx, my});
+                tooth.setRotation(sf::radians(a + 3.14159265f / 2.f));
                 window.draw(tooth);
             }
+            sf::CircleShape ring(innerR);
+            ring.setOrigin({innerR, innerR});
+            ring.setPosition({cx, cy});
+            ring.setFillColor(sf::Color::Transparent);
+            ring.setOutlineColor(gearColor);
+            ring.setOutlineThickness(3.f);
+            window.draw(ring);
+            sf::CircleShape hub(5.f);
+            hub.setOrigin({5.f, 5.f});
+            hub.setPosition({cx, cy});
+            hub.setFillColor(gearColor);
+            window.draw(hub);
         }
     }
 }

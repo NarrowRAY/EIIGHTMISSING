@@ -6,6 +6,7 @@
 class Scene_1B : public GameScene {
 public:
     explicit Scene_1B(int entryParam);
+    void OnBadEnd() override { m_showBadEnd = true; }
 
 protected:
     MapData      BuildMapData();
@@ -19,7 +20,25 @@ protected:
 private:
     int  m_entryParam = 0;
     bool m_showClockDetail = false;
+    bool m_showPuzzle1 = false;
     bool m_clockClickWasDown = false;
+
+    // puzzle1 贴图
+    sf::Texture m_puzzle1Tex;
+    std::unique_ptr<sf::Sprite> m_puzzle1Sprite;
+
+    // BadEnd CG 全屏贴图
+    sf::Texture m_badEndTex;
+    std::unique_ptr<sf::Sprite> m_badEndSprite;
+    bool m_showBadEnd = false;
+
+    // 公告栏揭纸拼图
+    bool m_showBulletin = false;
+    bool m_bulletinSolved = false;
+    struct Paper { sf::FloatRect rect; sf::Color color; std::string label; bool removed; };
+    std::vector<Paper> m_papers;
+    int m_bulletinDragIdx = -1;
+    sf::Vector2f m_bulletinDragOff;
 
     // 门精灵系统
     std::vector<sf::Vector2i> m_doorPositions;

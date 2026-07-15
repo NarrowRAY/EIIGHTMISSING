@@ -23,6 +23,10 @@ void Game::InitWindow() {
     m_window.create(sf::VideoMode({1280, 720}), U("八点迷思"), sf::State::Windowed);
     m_window.setFramerateLimit(60);
     m_window.setVerticalSyncEnabled(true);
+    // 窗口图标
+    sf::Image icon;
+    if (icon.loadFromFile("assets/textures/icon.png"))
+        m_window.setIcon(icon);
     // 禁用输入法，防止 WASD 触发中文输入
     HWND hwnd = m_window.getNativeHandle();
     ImmAssociateContext(hwnd, nullptr);

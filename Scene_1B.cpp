@@ -143,6 +143,21 @@ Scene_1B::Scene_1B(int entryParam) {
     // 打印机碰撞 (col0, row10)
     m_tileMap.SetBlocked(0, 10, true);
 
+    // ———— puzzle1 贴图（左窗点击展示） ————
+    if (m_puzzle1Tex.loadFromFile("assets/textures/puzzle1.png")) {
+        m_puzzle1Tex.setSmooth(true);
+        m_puzzle1Sprite = std::make_unique<sf::Sprite>(m_puzzle1Tex);
+    }
+
+    // ———— BadEnd CG 全屏贴图 ————
+    if (m_badEndTex.loadFromFile("assets/textures/badend.png")) {
+        m_badEndTex.setSmooth(true);
+        m_badEndSprite = std::make_unique<sf::Sprite>(m_badEndTex);
+        auto ts = m_badEndTex.getSize();
+        m_badEndSprite->setScale({SCREEN_W / static_cast<float>(ts.x), SCREEN_H / static_cast<float>(ts.y)});
+        m_badEndSprite->setPosition({0.f, 0.f});
+    }
+
     if (entryParam == 0) s_passwordUnlocked = false;  // 新游戏重置密码锁
 }
 
@@ -162,7 +177,7 @@ MapData Scene_1B::BuildMapData() {
         "                             K", // 7  密码锁
         "                             K", // 8  密码锁(显示屏由sprite绘制)
         "                              ", // 9
-        "                              ", // 10 打印机由sprite绘制
+        "P                             ", // 10 打印机由sprite绘制
         "                              ", // 11 地板
         "                             B", // 12 公告栏(沙发sprite)
         "                             B", // 13 公告栏(沙发sprite)
@@ -177,14 +192,127 @@ sf::Vector2f Scene_1B::GetSpawnPoint(int entryParam) {
 }
 
 void Scene_1B::HandleInput(const sf::RenderWindow& window) {
+    // ———— 公告栏揭纸 ————
+    if (m_showBulletin) {
+        sf::Vector2i mp = sf::Mouse::getPosition(window);
+        sf::View uiView({SCREEN_W / 2.f, SCREEN_H / 2.f}, {SCREEN_W, SCREEN_H});
+        sf::Vector2f sp = window.mapPixelToCoords(mp, uiView);
+        bool down = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
+
+        // 关闭按钮
+        const float pw = 800.f, ph2 = 550.f;
+        const float pxx = (SCREEN_W - pw) / 2.f, pyy = (SCREEN_H - ph2) / 2.f;
+        const float ccx = pxx + pw - 42.f, ccy = pyy + 20.f, ccr = 22.f;
+        if (down && !m_clockClickWasDown) {
+            float d = std::sqrt((sp.x - ccx) * (sp.x - ccx) + (sp.y - ccy) * (sp.y - ccy));
+            if (d <= ccr) { m_showBulletin = false; m_clockClickWasDown = true; return; }
+        }
+
+        if (down && m_bulletinDragIdx < 0) {
+            for (int i = static_cast<int>(m_papers.size()) - 1; i >= 0; --i) {
+                if (m_papers[i].removed) continue;
+                if (m_papers[i].rect.contains(sp)) {
+                    m_bulletinDragIdx = i;
+                    m_bulletinDragOff = sp - m_papers[i].rect.position;
+                    // 移到最上层
+                    auto p = m_papers[i];
+                    m_papers.erase(m_papers.begin() + i);
+                    m_papers.push_back(p);
+                    m_bulletinDragIdx = static_cast<int>(m_papers.size()) - 1;
+                    break;
+                }
+            }
+        } else if (down && m_bulletinDragIdx >= 0) {
+            auto& r = m_papers[m_bulletinDragIdx].rect;
+            r.position = sp - m_bulletinDragOff;
+        } else if (!down && m_bulletinDragIdx >= 0) {
+            auto& r = m_papers[m_bulletinDragIdx].rect;
+            // 拖到面板外 → 移除
+            const float pwx = (SCREEN_W - 800) / 2.f, pwy = (SCREEN_H - 550) / 2.f;
+            if (r.position.x < pwx - 40 || r.position.x > pwx + 840 ||
+                r.position.y < pwy - 40 || r.position.y > pwy + 590) {
+                m_papers[m_bulletinDragIdx].removed = true;
+            }
+            m_bulletinDragIdx = -1;
+            // 全部移除 → 完成
+            bool allGone = true;
+            for (auto& p : m_papers) if (!p.removed) { allGone = false; break; }
+            if (allGone) m_bulletinSolved = true;
+        }
+        m_clockClickWasDown = down;
+        return;
+    }
+
+    if (m_showPuzzle1) {
+        if (IsInDialogue()) {
+            GameScene::HandleInput(window);          // 处理对话框点击推进
+        } else {
+            bool down = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
+            if (down && !m_clockClickWasDown) {
+                // 只有点击圆形 X 按钮才关闭
+                sf::Vector2i mp = sf::Mouse::getPosition(window);
+                sf::View uiView({SCREEN_W / 2.f, SCREEN_H / 2.f}, {SCREEN_W, SCREEN_H});
+                sf::Vector2f sp = window.mapPixelToCoords(mp, uiView);
+                const float pw = 800.f, ph = 600.f;
+                const float px = (SCREEN_W - pw) / 2.f;
+                const float py = (SCREEN_H - ph) / 2.f;
+                const float cx = px + pw - 50.f, cy = py + 16.f, cr = 22.f;
+                float dist = std::sqrt((sp.x - cx) * (sp.x - cx) + (sp.y - cy) * (sp.y - cy));
+                if (dist <= cr) m_showPuzzle1 = false;
+            }
+            m_clockClickWasDown = down;
+        }
+        return;
+    }
     if (m_showClockDetail) {
         bool down = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
         if (down && !m_clockClickWasDown) m_showClockDetail = false;
         m_clockClickWasDown = down;
         return;  // 阻塞其他输入
     }
+    // ———— 公告栏点击检测 ————
+    if (!m_showBulletin && !m_bulletinSolved && !IsInDialogue()
+        && !m_savePanel.IsVisible() && !m_passwordUI.IsVisible()
+        && !m_choiceDialog.IsVisible() && !m_showPuzzle1 && !m_showClockDetail) {
+        bool down = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
+        if (down && !m_clockClickWasDown) {
+            sf::Vector2i px = sf::Mouse::getPosition(window);
+            sf::Vector2f wp = window.mapPixelToCoords(px, m_camera);
+            int c = TileMap::PixelToTile(wp.x);
+            int r = TileMap::PixelToTile(wp.y);
+            for (int dc = -1; dc <= 1; ++dc) {
+                for (int dr = -1; dr <= 1; ++dr) {
+                    int tc = c + dc, tr = r + dr;
+                    if (!m_tileMap.IsInBounds(tc, tr)) continue;
+                    if (m_tileMap.GetTile(tc, tr) == static_cast<int>(TileType::BulletinBoard)) {
+                        float ddx = (tc + 0.5f) * TILE_SIZE - m_player.GetPosition().x;
+                        float ddy = (tr + 0.5f) * TILE_SIZE - m_player.GetPosition().y;
+                        if (std::sqrt(ddx * ddx + ddy * ddy) <= 160.f) {
+                            m_showBulletin = true;
+                            if (m_papers.empty()) {
+                                const float bx = (SCREEN_W - 800) / 2.f;
+                                const float by = (SCREEN_H - 550) / 2.f;
+                                m_papers = {
+                                    {sf::FloatRect({bx + 80,  by + 100}, {190, 140}), sf::Color(240, 220, 200), "通知", false},
+                                    {sf::FloatRect({bx + 280, by + 70},  {180, 130}), sf::Color(220, 210, 230), "海报", false},
+                                    {sf::FloatRect({bx + 100, by + 270}, {230, 110}), sf::Color(210, 230, 210), "通知", false},
+                                    {sf::FloatRect({bx + 200, by + 170}, {180, 170}), sf::Color(230, 215, 210), "海报", false},
+                                    {sf::FloatRect({bx + 40,  by + 55},  {160, 140}), sf::Color(225, 225, 215), "通知", false},
+                                    {sf::FloatRect({bx + 350, by + 190}, {200, 130}), sf::Color(235, 225, 210), "海报", false},
+                                    {sf::FloatRect({bx + 500, by + 100}, {170, 150}), sf::Color(215, 220, 225), "通知", false},
+                                    {sf::FloatRect({bx + 250, by + 290}, {220, 120}), sf::Color(228, 218, 208), "海报", false},
+                                };
+                            }
+                            goto skip_input;
+                        }
+                    }
+                }
+            }
+        }
+    }
+skip_input:
     m_clockClickWasDown = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
-    GameScene::HandleInput(window);
+    if (!m_showBulletin) GameScene::HandleInput(window);
 }
 
 void Scene_1B::Draw(sf::RenderWindow& window) {
@@ -282,6 +410,143 @@ void Scene_1B::Draw(sf::RenderWindow& window) {
     {
         sf::View uiView({SCREEN_W / 2.f, SCREEN_H / 2.f}, {SCREEN_W, SCREEN_H});
         window.setView(uiView);
+
+        // ———— 公告栏揭纸 ————
+        if (m_showBulletin) {
+            sf::RectangleShape overlay({static_cast<float>(SCREEN_W), static_cast<float>(SCREEN_H)});
+            overlay.setFillColor(sf::Color(0, 0, 0, 160));
+            window.draw(overlay);
+
+            // 临时验证：大红框确保弹窗机制生效
+            sf::RectangleShape test({400.f, 300.f});
+            test.setPosition({SCREEN_W / 2.f - 200.f, SCREEN_H / 2.f - 150.f});
+            test.setFillColor(sf::Color(200, 40, 40, 200));
+            window.draw(test);
+
+            const float pw = 800.f, ph = 550.f;
+            const float px = (SCREEN_W - pw) / 2.f;
+            const float py = (SCREEN_H - ph) / 2.f;
+
+            // 面板（深棕底板）
+            sf::RectangleShape panel({pw, ph});
+            panel.setPosition({px, py});
+            panel.setFillColor(sf::Color(55, 35, 20));
+            panel.setOutlineColor(sf::Color(100, 70, 40));
+            panel.setOutlineThickness(3.f);
+            window.draw(panel);
+
+            // "公告栏" 标题
+            if (m_font) {
+                sf::Text title(*m_font, U("公告栏"), 36);
+                title.setFillColor(sf::Color(240, 230, 210));
+                sf::FloatRect tb = title.getLocalBounds();
+                title.setPosition(sf::Vector2f(px + (pw - tb.size.x) / 2.f, py + 14.f));
+                window.draw(title);
+            }
+
+            // 巨大的 "10" 数字（底层，透过纸缝可见）
+            if (m_font) {
+                sf::Text bigNum(*m_font, U("10"), 180);
+                bigNum.setFillColor(sf::Color(180, 160, 130, m_bulletinSolved ? 255 : 120));
+                sf::FloatRect nb = bigNum.getLocalBounds();
+                bigNum.setPosition(sf::Vector2f(
+                    px + (pw - nb.size.x) / 2.f,
+                    py + (ph - nb.size.y) / 2.f - nb.position.y - 20.f));
+                window.draw(bigNum);
+            }
+
+            // 纸张（从底层到顶层绘制）
+            for (auto& p : m_papers) {
+                if (p.removed) continue;
+                sf::RectangleShape paper({p.rect.size.x, p.rect.size.y});
+                paper.setPosition(p.rect.position);
+                paper.setFillColor(p.color);
+                paper.setOutlineColor(sf::Color(180, 160, 140));
+                paper.setOutlineThickness(1.f);
+                window.draw(paper);
+                if (m_font) {
+                    sf::Text label(*m_font, U(p.label), 22);
+                    label.setFillColor(sf::Color(80, 60, 40));
+                    sf::FloatRect lb = label.getLocalBounds();
+                    label.setPosition(sf::Vector2f(
+                        p.rect.position.x + (p.rect.size.x - lb.size.x) / 2.f,
+                        p.rect.position.y + (p.rect.size.y - lb.size.y) / 2.f - lb.position.y));
+                    window.draw(label);
+                }
+            }
+
+            // 收集完成提示
+            if (m_bulletinSolved && m_font) {
+                sf::Text done(*m_font, U("找到了数字 10！"), 30);
+                done.setFillColor(sf::Color(255, 220, 140));
+                done.setOutlineColor(sf::Color(0, 0, 0, 180));
+                done.setOutlineThickness(2.f);
+                sf::FloatRect db = done.getLocalBounds();
+                done.setPosition(sf::Vector2f(px + (pw - db.size.x) / 2.f, py + ph + 10.f));
+                window.draw(done);
+            }
+
+            // 关闭按钮
+            const float ccx = px + pw - 42.f, ccy = py + 20.f, ccr = 18.f;
+            sf::CircleShape closeBg(ccr);
+            closeBg.setOrigin({ccr, ccr});
+            closeBg.setPosition({ccx, ccy});
+            closeBg.setFillColor(sf::Color(80, 50, 30, 200));
+            window.draw(closeBg);
+            for (int i = 0; i < 2; ++i) {
+                const float al = 10.f, aw = 2.5f;
+                sf::RectangleShape arm({al * 2.f, aw});
+                arm.setOrigin({al, aw / 2.f});
+                arm.setPosition({ccx, ccy});
+                arm.setFillColor(sf::Color(240, 230, 210));
+                arm.setRotation(sf::degrees(i == 0 ? 45.f : -45.f));
+                window.draw(arm);
+            }
+        }
+
+        // ———— BadEnd CG 全屏贴图（在对话框下层） ————
+        if (m_showBadEnd && m_badEndSprite) {
+            window.draw(*m_badEndSprite);
+        }
+
+        // ———— puzzle1 贴图（在对话框下层） ————
+        if (m_showPuzzle1 && m_puzzle1Sprite) {
+            sf::RectangleShape overlay({static_cast<float>(SCREEN_W), static_cast<float>(SCREEN_H)});
+            overlay.setFillColor(sf::Color(0, 0, 0, 180));
+            window.draw(overlay);
+
+            const float pw = 800.f, ph = 600.f;
+            const float px = (SCREEN_W - pw) / 2.f;
+            const float py = (SCREEN_H - ph) / 2.f;
+
+            auto texSize = m_puzzle1Tex.getSize();
+            m_puzzle1Sprite->setScale({pw / texSize.x, ph / texSize.y});
+            m_puzzle1Sprite->setPosition({px, py});
+            window.draw(*m_puzzle1Sprite);
+
+            // 关闭按钮（圆形半透明底 + 白色X）
+            const float cx = px + pw - 50.f, cy = py + 16.f, cr = 18.f;
+            sf::CircleShape closeBg(cr);
+            closeBg.setOrigin({cr, cr});
+            closeBg.setPosition({cx, cy});
+            closeBg.setFillColor(sf::Color(0, 0, 0, 120));
+            window.draw(closeBg);
+
+            const float armLen = 10.f, armW = 2.5f;
+            sf::RectangleShape arm1({armLen * 2.f, armW});
+            arm1.setOrigin({armLen, armW / 2.f});
+            arm1.setPosition({cx, cy});
+            arm1.setFillColor(sf::Color(240, 240, 245));
+            arm1.setRotation(sf::degrees(45.f));
+            window.draw(arm1);
+            sf::RectangleShape arm2({armLen * 2.f, armW});
+            arm2.setOrigin({armLen, armW / 2.f});
+            arm2.setPosition({cx, cy});
+            arm2.setFillColor(sf::Color(240, 240, 245));
+            arm2.setRotation(sf::degrees(-45.f));
+            window.draw(arm2);
+        }
+
         bool hasModal = IsInDialogue() || m_passwordUI.IsVisible() || m_choiceDialog.IsVisible() || m_savePanel.IsVisible();
         if (hasModal) {
             if (IsInDialogue())            DrawDialogueBox(window);
@@ -292,34 +557,50 @@ void Scene_1B::Draw(sf::RenderWindow& window) {
         if (!IsInDialogue() && m_dialogueTimer <= 0.f) {
             sf::RectangleShape shape;
             const float bx = SCREEN_W - 60.f, by = 10.f, bs = 50.f;
-            shape.setSize({bs, bs});
-            shape.setPosition({bx, by});
-            shape.setFillColor(sf::Color(50, 50, 60, 200));
-            shape.setOutlineColor(sf::Color(150, 150, 170));
-            shape.setOutlineThickness(2.f);
-            window.draw(shape);
+            const float cx = bx + bs / 2.f, cy = by + bs / 2.f;
 
-            float gcx = bx + bs / 2.f, gcy = by + bs / 2.f;
-            sf::CircleShape circle(10.f);
-            circle.setFillColor(sf::Color(200, 200, 220));
-            circle.setOrigin({10.f, 10.f});
-            circle.setPosition({gcx, gcy});
-            window.draw(circle);
+            // 背景：砍角方形（暖白配色）
+            sf::ConvexShape bg(8);
+            const float c2 = 8.f;
+            bg.setPoint(0, {c2, 0.f}); bg.setPoint(1, {bs - c2, 0.f});
+            bg.setPoint(2, {bs, c2}); bg.setPoint(3, {bs, bs - c2});
+            bg.setPoint(4, {bs - c2, bs}); bg.setPoint(5, {c2, bs});
+            bg.setPoint(6, {0.f, bs - c2}); bg.setPoint(7, {0.f, c2});
+            bg.setPosition({bx, by});
+            bg.setFillColor(sf::Color(240, 235, 225, 220));
+            bg.setOutlineColor(sf::Color(160, 145, 120, 180));
+            bg.setOutlineThickness(1.5f);
+            window.draw(bg);
 
-            for (int i = 0; i < 6; ++i) {
-                float angle = i * 3.14159f / 3.f;
-                float sx = gcx + std::cos(angle) * 16.f;
-                float sy = gcy + std::sin(angle) * 16.f;
-                sf::RectangleShape tooth(sf::Vector2f(10.f, 4.f));
-                tooth.setFillColor(sf::Color(200, 200, 220));
-                tooth.setOrigin({5.f, 2.f});
-                tooth.setPosition({sx, sy});
-                tooth.setRotation(sf::radians(angle));
+            // 齿轮：8齿 + 外环 + 中心圆
+            const float outerR = 16.f, innerR = 11.f, toothLen = outerR - innerR;
+            const sf::Color gearColor(100, 85, 65);
+            for (int i = 0; i < 8; ++i) {
+                float a = i * 3.14159265f * 2.f / 8.f;
+                float mx = cx + std::cos(a) * (innerR + toothLen / 2.f);
+                float my = cy + std::sin(a) * (innerR + toothLen / 2.f);
+                sf::RectangleShape tooth({5.f, toothLen + 2.f});
+                tooth.setFillColor(gearColor);
+                tooth.setOrigin({2.5f, toothLen / 2.f + 1.f});
+                tooth.setPosition({mx, my});
+                tooth.setRotation(sf::radians(a + 3.14159265f / 2.f));
                 window.draw(tooth);
             }
+            sf::CircleShape ring(innerR);
+            ring.setOrigin({innerR, innerR});
+            ring.setPosition({cx, cy});
+            ring.setFillColor(sf::Color::Transparent);
+            ring.setOutlineColor(gearColor);
+            ring.setOutlineThickness(3.f);
+            window.draw(ring);
+            sf::CircleShape hub(5.f);
+            hub.setOrigin({5.f, 5.f});
+            hub.setPosition({cx, cy});
+            hub.setFillColor(gearColor);
+            window.draw(hub);
         }
 
-        // ———— 第五层：放大钟表盘 ————
+        // ———— 放大钟表盘 ————
         if (m_showClockDetail) {
             sf::RectangleShape overlay({static_cast<float>(SCREEN_W), static_cast<float>(SCREEN_H)});
             overlay.setFillColor(sf::Color(0, 0, 0, 180));
@@ -440,6 +721,28 @@ bool Scene_1B::OnTileClick(int tile, int col, int row) {
         }
     }
 
+    // 公告栏 — 揭纸拼图（远距离也可点击）
+    if (tile == static_cast<int>(TileType::BulletinBoard)) {
+        if (!m_bulletinSolved) {
+            m_showBulletin = true;
+            if (m_papers.empty()) {
+                const float bx = (SCREEN_W - 800) / 2.f;  // 560
+                const float by = (SCREEN_H - 550) / 2.f;  // 265
+                m_papers = {
+                    {sf::FloatRect({bx + 80,  by + 100}, {190, 140}), sf::Color(240, 220, 200), "通知", false},
+                    {sf::FloatRect({bx + 280, by + 70},  {180, 130}), sf::Color(220, 210, 230), "海报", false},
+                    {sf::FloatRect({bx + 100, by + 270}, {230, 110}), sf::Color(210, 230, 210), "通知", false},
+                    {sf::FloatRect({bx + 200, by + 170}, {180, 170}), sf::Color(230, 215, 210), "海报", false},
+                    {sf::FloatRect({bx + 40,  by + 55},  {160, 140}), sf::Color(225, 225, 215), "通知", false},
+                    {sf::FloatRect({bx + 350, by + 190}, {200, 130}), sf::Color(235, 225, 210), "海报", false},
+                    {sf::FloatRect({bx + 500, by + 100}, {170, 150}), sf::Color(215, 220, 225), "通知", false},
+                    {sf::FloatRect({bx + 250, by + 290}, {220, 120}), sf::Color(228, 218, 208), "海报", false},
+                };
+            }
+        }
+        return true;
+    }
+
     if (std::sqrt(dx * dx + dy * dy) > 160.f) return false;
 
     // 沙发
@@ -456,10 +759,25 @@ bool Scene_1B::OnTileClick(int tile, int col, int row) {
         }
     }
 
-    // 左窗 (cols3-4, rows1-2)
+    // 左窗 (cols3-4, rows1-2) — 展示 puzzle1 + 对话框
     if (col >= 3 && col <= 4 && row >= 1 && row <= 2) {
-        m_choiceDialog.ShowInfo("密码锁线索1");
+        m_showPuzzle1 = true;
+        StartDialogue({"窗户上的倒影，似乎别有深意"}, {Portrait::Nomal});
         return true;
+    }
+
+    // 打印机存档 (col0, row10)
+    for (const auto& dp : m_printerPositions) {
+        float bx = dp.x * 1.f * TILE_SIZE - 45.f;
+        float by = dp.y * 1.f * TILE_SIZE - 50.f;
+        float bw = 1.f * TILE_SIZE * 3.75f;
+        float bh = 1.f * TILE_SIZE * 3.75f;
+        float cx = (col + 0.5f) * TILE_SIZE;
+        float cy = (row + 0.5f) * TILE_SIZE;
+        if (cx >= bx && cx < bx + bw && cy >= by && cy < by + bh) {
+            m_savePanel.Show(true);
+            return true;
+        }
     }
 
     // 电子显示屏 (col14-15, row8-10)
@@ -471,7 +789,7 @@ bool Scene_1B::OnTileClick(int tile, int col, int row) {
         float cx = (col + 0.5f) * TILE_SIZE;
         float cy = (row + 0.5f) * TILE_SIZE;
         if (cx >= bx && cx < bx + bw && cy >= by && cy < by + bh) {
-            m_choiceDialog.ShowInfo("教室使用情况");
+            m_choiceDialog.ShowInfo("教室使用情况\n\n104: 空    106: 有课\n\n204: 有课  206: 有课\n\n304: --    306: --\n\n......\n......");
             return true;
         }
     }

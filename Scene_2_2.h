@@ -15,8 +15,11 @@ protected:
     sf::Vector2f GetSavePosition() override;
     bool         OnTileClick(int tile, int col, int row) override;
     void         Update(float dt) override;
+    void         OnSceneEnter() override;
 private:
+    int  m_entryParam2 = 0;
     bool  m_pendingDream = false;
+    bool  m_dreamDone = false;
     float m_dreamTimer   = 0.f;
 
     // 清洁车精灵

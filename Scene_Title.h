@@ -17,13 +17,11 @@ public:
 
 private:
     const sf::Font*              m_font;
-    std::unique_ptr<sf::Text>    m_title;
-    sf::RectangleShape           m_btnStart;
-    std::unique_ptr<sf::Text>    m_btnStartLabel;
-    sf::RectangleShape           m_btnContinue;
-    std::unique_ptr<sf::Text>    m_btnContinueLabel;
-    sf::RectangleShape           m_btnExit;
-    std::unique_ptr<sf::Text>    m_btnExitLabel;
+    sf::Texture                  m_bgTex;
+    std::unique_ptr<sf::Sprite>  m_bgSprite;
+    sf::ConvexShape              m_btnStart;
+    sf::ConvexShape              m_btnContinue;
+    sf::ConvexShape              m_btnExit;
     bool m_hoverStart    = false;
     bool m_hoverContinue = false;
     bool m_hoverExit     = false;
@@ -32,4 +30,7 @@ private:
     SavePanel m_loadPanel;
     bool m_showLoad  = false;
     bool m_firstFrame = true;
+
+    // ———— 坐标显示（Tab 切换） ————
+    bool m_showCoords = false;
 };

@@ -4,35 +4,32 @@
 TitleScene::TitleScene(const sf::Font* font) : m_font(font) {
     m_loadPanel.SetFont(font);
 
-    m_title = std::make_unique<sf::Text>(*font, U("八点迷思"), 80);
-    m_title->setFillColor(Colors::TitleGold);
-    m_title->setPosition({
-        SCREEN_W / 2.f - m_title->getLocalBounds().size.x / 2.f,
-        SCREEN_H * 0.18f
-    });
+    // 背景图
+    if (m_bgTex.loadFromFile("assets/textures/mainpage1.png")) {
+        m_bgTex.setSmooth(true);
+        m_bgSprite = std::make_unique<sf::Sprite>(m_bgTex);
+        auto ts = m_bgTex.getSize();
+        m_bgSprite->setScale({SCREEN_W / static_cast<float>(ts.x), SCREEN_H / static_cast<float>(ts.y)});
+    }
 
-    float btnW = 260, btnH = 60;
-    float btnX = SCREEN_W / 2.f - btnW / 2.f;
-    float startY   = SCREEN_H * 0.38f;
-    float contY    = SCREEN_H * 0.48f;
-    float exitY    = SCREEN_H * 0.58f;
-
-    auto makeBtn = [&](sf::RectangleShape& btn, std::unique_ptr<sf::Text>& label,
-                        const std::string& text, float y) {
-        btn.setSize({btnW, btnH});
-        btn.setFillColor(Colors::ButtonNormal);
-        btn.setPosition({btnX, y});
-        label = std::make_unique<sf::Text>(*font, U(text), 32);
-        label->setFillColor(Colors::ButtonText);
-        label->setPosition({
-            btnX + btnW / 2.f - label->getLocalBounds().size.x / 2.f,
-            y + btnH / 2.f - 18.f
-        });
+    // ———— 三个异形按钮（默认透明，悬停时显示） ————
+    auto setupQuad = [](sf::ConvexShape& shape, float x0, float y0, float x1, float y1,
+                        float x2, float y2, float x3, float y3) {
+        shape.setPointCount(4);
+        shape.setPoint(0, {x0, y0});
+        shape.setPoint(1, {x1, y1});
+        shape.setPoint(2, {x2, y2});
+        shape.setPoint(3, {x3, y3});
+        shape.setFillColor(sf::Color::Transparent);
+        shape.setOutlineThickness(0.f);
     };
 
-    makeBtn(m_btnStart,     m_btnStartLabel,    "新游戏",    startY);
-    makeBtn(m_btnContinue,  m_btnContinueLabel, "继续游戏",   contY);
-    makeBtn(m_btnExit,      m_btnExitLabel,     "退出游戏",   exitY);
+    // 新游戏: TL→TR→BR→BL
+    setupQuad(m_btnStart, 1380, 184, 1920, 0, 1920, 345, 1380, 440);
+    // 继续游戏
+    setupQuad(m_btnContinue, 1380, 453, 1920, 360, 1920, 792, 1380, 661);
+    // 退出游戏
+    setupQuad(m_btnExit, 1380, 673, 1920, 801, 1920, 1080, 1380, 898);
 }
 
 void TitleScene::HandleInput(const sf::RenderWindow& window) {
@@ -92,8 +89,15 @@ void TitleScene::HandleInput(const sf::RenderWindow& window) {
 
 void TitleScene::HandleEvent(const sf::Event& event) {
     if (const auto* kp = event.getIf<sf::Event::KeyPressed>()) {
-        if (kp->scancode == sf::Keyboard::Scancode::Space ||
-            kp->scancode == sf::Keyboard::Scancode::Enter) {
+        auto code = kp->scancode;
+
+        if (code == sf::Keyboard::Scancode::Tab) {
+            m_showCoords = !m_showCoords;
+            return;
+        }
+
+        if (code == sf::Keyboard::Scancode::Space ||
+            code == sf::Keyboard::Scancode::Enter) {
             m_nextScene  = static_cast<int>(SceneID::Classroom1B);
             m_entryParam = 0;
         }
@@ -102,23 +106,50 @@ void TitleScene::HandleEvent(const sf::Event& event) {
 
 void TitleScene::Update(float dt) {
     (void)dt;
-    m_btnStart.setFillColor(m_hoverStart ? Colors::ButtonHover : Colors::ButtonNormal);
-    m_btnContinue.setFillColor(m_hoverContinue ? Colors::ButtonHover : Colors::ButtonNormal);
-    m_btnExit.setFillColor(m_hoverExit ? Colors::ButtonHover : Colors::ButtonNormal);
+    auto applyHover = [](sf::ConvexShape& shape, bool hover) {
+        if (hover) {
+            shape.setFillColor(sf::Color(255, 255, 255, 80));
+        } else {
+            shape.setFillColor(sf::Color::Transparent);
+        }
+    };
+    applyHover(m_btnStart,    m_hoverStart);
+    applyHover(m_btnContinue, m_hoverContinue);
+    applyHover(m_btnExit,     m_hoverExit);
 }
 
 void TitleScene::Draw(sf::RenderWindow& window) {
-    window.draw(*m_title);
+    if (m_bgSprite) window.draw(*m_bgSprite);
+
     window.draw(m_btnStart);
-    window.draw(*m_btnStartLabel);
     window.draw(m_btnContinue);
-    window.draw(*m_btnContinueLabel);
     window.draw(m_btnExit);
-    window.draw(*m_btnExitLabel);
 
     if (m_showLoad) {
         sf::View uiView({SCREEN_W / 2.f, SCREEN_H / 2.f}, {SCREEN_W, SCREEN_H});
         window.setView(uiView);
         m_loadPanel.Draw(window);
+    }
+
+    // ———— 坐标显示 ————
+    if (m_showCoords && m_font) {
+        sf::Vector2i mp = sf::Mouse::getPosition(window);
+        sf::Vector2f wp = window.mapPixelToCoords(mp);
+        std::string info = "pixel: " + std::to_string(mp.x) + ", " + std::to_string(mp.y)
+                         + "  |  logic: " + std::to_string(static_cast<int>(wp.x)) + ", " + std::to_string(static_cast<int>(wp.y));
+
+        sf::Text t(*m_font, U(info), 20);
+        t.setFillColor(sf::Color(255, 255, 100));
+        t.setOutlineColor(sf::Color(0, 0, 0, 200));
+        t.setOutlineThickness(2.f);
+        t.setPosition({10.f, 10.f});
+        window.draw(t);
+
+        sf::Text hint(*m_font, U("[Tab] 隐藏坐标"), 16);
+        hint.setFillColor(sf::Color(180, 180, 180));
+        hint.setOutlineColor(sf::Color(0, 0, 0, 180));
+        hint.setOutlineThickness(1.f);
+        hint.setPosition({10.f, 36.f});
+        window.draw(hint);
     }
 }

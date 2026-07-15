@@ -34,15 +34,15 @@ private:
     std::vector<sf::Vector2i> m_sofaPositions;
     sf::Texture               m_sofaTex;
     std::vector<std::unique_ptr<sf::Sprite>> m_sofaSprites;
-    // 打印机精灵
-    std::vector<sf::Vector2i> m_printerPositions;
-    sf::Texture               m_printerTex;
-    std::vector<std::unique_ptr<sf::Sprite>> m_printerSprites;
-
     // 手机弹窗
     bool m_showPhone = false;
     bool m_phoneClickWasDown = false;
     bool m_phoneSolved = false;
+    float m_phoneSolvedTimer = 0.f;
+    float m_msgTrueTimer = 0.f;
+    bool m_msgTrueShown = false;
+    bool m_dreamDialogueDone = false;
+    float m_dreamExitTimer = 0.f;
     sf::Texture m_phoneTex;
     std::unique_ptr<sf::Sprite> m_phoneSprite;
 

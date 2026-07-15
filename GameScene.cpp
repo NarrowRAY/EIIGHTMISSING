@@ -30,6 +30,31 @@ void GameScene::LoadMap(const MapData& data, sf::Vector2f spawn) {
 }
 
 // ============================================================
+// CG 全屏贴图
+// ============================================================
+void GameScene::ShowCG(const std::string& path) {
+    if (m_cgTex.loadFromFile(path)) {
+        m_cgTex.setSmooth(true);
+        m_cgSprite = std::make_unique<sf::Sprite>(m_cgTex);
+        auto ts = m_cgTex.getSize();
+        m_cgSprite->setScale({SCREEN_W / static_cast<float>(ts.x), SCREEN_H / static_cast<float>(ts.y)});
+        m_cgSprite->setPosition({0.f, 0.f});
+    }
+}
+
+void GameScene::HideCG() {
+    m_cgSprite.reset();
+}
+
+void GameScene::DrawCG(sf::RenderWindow& window) const {
+    if (m_cgSprite) {
+        sf::View uiView({SCREEN_W / 2.f, SCREEN_H / 2.f}, {SCREEN_W, SCREEN_H});
+        window.setView(uiView);
+        window.draw(*m_cgSprite);
+    }
+}
+
+// ============================================================
 // 对话系统
 // ============================================================
 void GameScene::StartDialogue(const std::vector<std::string>& lines, float delay) {
@@ -261,16 +286,6 @@ void GameScene::TryInteract(const sf::RenderWindow& window) {
                 return;
             }
 
-            // ---- 公告栏 ----
-            if (tile == static_cast<int>(TileType::BulletinBoard)) {
-                float dx = (c + 0.5f) * TILE_SIZE - pp.x;
-                float dy = (r + 0.5f) * TILE_SIZE - pp.y;
-                if (std::sqrt(dx * dx + dy * dy) <= 160.f) {
-                    m_choiceDialog.ShowInfoWide("公告栏（密码锁线索2）");
-                }
-                return;
-            }
-
             // ---- 密码锁 ----
             if (tile == static_cast<int>(TileType::KeypadLock)) {
                 float lx = c * TILE_SIZE + TILE_SIZE / 2.f;
@@ -399,10 +414,18 @@ void GameScene::Update(float dt) {
             if (c == 0) {  // "是" → 展示结果
                 if (m_isCorrectClassroom) {
                     m_classroomResult = ClassroomResult::Correct;
-                    m_choiceDialog.ShowInfoWide("呃我这样的屌丝也有走对教室的一天啊......");
+                    OnGoodEnd();
+                    StartDialogue({
+                        "呃我这样的屌丝也有走对教室的一天啊......",
+                        "【史诗级胜利...】"
+                    });
                 } else {
                     m_classroomResult = ClassroomResult::Wrong;
-                    m_choiceDialog.ShowInfoWide("病急也不能乱投医，你坐在陌生的天花板下任凭第一节课溜走。");
+                    OnBadEnd();
+                    StartDialogue({
+                        "病急也不能乱投医，你坐在陌生的天花板下任凭第一节课溜走。",
+                        "【game over】"
+                    });
                 }
             }
             // c==1: "否" → 不做任何事，直接关闭
@@ -431,8 +454,8 @@ void GameScene::Update(float dt) {
         }
     }
 
-    // ---- 教室结果信息面板关闭 → 回标题 ----
-    if (m_classroomResult != ClassroomResult::None && !m_choiceDialog.IsVisible()) {
+    // ---- 教室结果对话结束 → 回标题 ----
+    if (m_classroomResult != ClassroomResult::None && !IsInDialogue()) {
         m_classroomResult = ClassroomResult::None;
         m_nextScene = static_cast<int>(SceneID::Title);
         m_entryParam = 0;
@@ -511,7 +534,6 @@ void GameScene::Draw(sf::RenderWindow& window) {
         }
         // 设置齿轮图标（小地图下方）
         if (!IsInDialogue() && m_dialogueTimer <= 0.f) {
-            sf::RectangleShape shape;
             const float bx = SCREEN_W - 60.f, bs = 50.f;
             float gearY = 10.f;
             int mapW = m_tileMap.Width(), mapH = m_tileMap.Height();
@@ -520,31 +542,52 @@ void GameScene::Draw(sf::RenderWindow& window) {
                 float mmBottom = 10.f + ts * mapH + 10.f;
                 if (mmBottom > gearY) gearY = mmBottom + 12.f;
             }
-            shape.setSize({bs, bs});
-            shape.setPosition({bx, gearY});
-            shape.setFillColor(sf::Color(50, 50, 60, 200));
-            shape.setOutlineColor(sf::Color(150, 150, 170));
-            shape.setOutlineThickness(2.f);
-            window.draw(shape);
+            const float cx = bx + bs / 2.f, cy = gearY + bs / 2.f;
 
-            float cx = bx + bs / 2.f, cy = gearY + bs / 2.f;
-            sf::CircleShape circle(10.f);
-            circle.setFillColor(sf::Color(200, 200, 220));
-            circle.setOrigin({10.f, 10.f});
-            circle.setPosition({cx, cy});
-            window.draw(circle);
+            // 背景：砍角方形（暖白配色，与存档面板统一）
+            sf::ConvexShape bg(8);
+            const float c2 = 8.f;
+            bg.setPoint(0, {c2, 0.f}); bg.setPoint(1, {bs - c2, 0.f});
+            bg.setPoint(2, {bs, c2}); bg.setPoint(3, {bs, bs - c2});
+            bg.setPoint(4, {bs - c2, bs}); bg.setPoint(5, {c2, bs});
+            bg.setPoint(6, {0.f, bs - c2}); bg.setPoint(7, {0.f, c2});
+            bg.setPosition({bx, gearY});
+            bg.setFillColor(sf::Color(240, 235, 225, 220));
+            bg.setOutlineColor(sf::Color(160, 145, 120, 180));
+            bg.setOutlineThickness(1.5f);
+            window.draw(bg);
 
-            for (int i = 0; i < 6; ++i) {
-                float angle = i * 3.14159f / 3.f;
-                float sx = cx + std::cos(angle) * 16.f;
-                float sy = cy + std::sin(angle) * 16.f;
-                sf::RectangleShape tooth(sf::Vector2f(10.f, 4.f));
-                tooth.setFillColor(sf::Color(200, 200, 220));
-                tooth.setOrigin({5.f, 2.f});
-                tooth.setPosition({sx, sy});
-                tooth.setRotation(sf::radians(angle));
+            // 齿轮：外圈齿（8个矩形）
+            const float outerR = 16.f, innerR = 11.f, toothLen = outerR - innerR;
+            const int teeth = 8;
+            const sf::Color gearColor(100, 85, 65);
+            for (int i = 0; i < teeth; ++i) {
+                float a = i * 3.14159265f * 2.f / teeth;
+                float mx = cx + std::cos(a) * (innerR + toothLen / 2.f);
+                float my = cy + std::sin(a) * (innerR + toothLen / 2.f);
+                sf::RectangleShape tooth({5.f, toothLen + 2.f});
+                tooth.setFillColor(gearColor);
+                tooth.setOrigin({2.5f, toothLen / 2.f + 1.f});
+                tooth.setPosition({mx, my});
+                tooth.setRotation(sf::radians(a + 3.14159265f / 2.f));
                 window.draw(tooth);
             }
+
+            // 齿轮：外圈环
+            sf::CircleShape ring(innerR);
+            ring.setOrigin({innerR, innerR});
+            ring.setPosition({cx, cy});
+            ring.setFillColor(sf::Color::Transparent);
+            ring.setOutlineColor(gearColor);
+            ring.setOutlineThickness(3.f);
+            window.draw(ring);
+
+            // 齿轮：中心圆
+            sf::CircleShape hub(5.f);
+            hub.setOrigin({5.f, 5.f});
+            hub.setPosition({cx, cy});
+            hub.setFillColor(gearColor);
+            window.draw(hub);
         }
     }
 }
@@ -632,6 +675,7 @@ void GameScene::DrawMinimap(sf::RenderWindow& window) {
 
 void GameScene::Reset() {
     Scene::Reset();
+    HideCG();
     m_passwordUI.Hide();
     m_choiceDialog.Hide();
     m_dialogueIndex = -1;

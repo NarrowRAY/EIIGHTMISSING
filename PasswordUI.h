@@ -47,6 +47,6 @@ private:
     AudioManager* m_audio = nullptr;
     std::vector<Btn> m_buttons;
 
-    static constexpr const char* CORRECT_PW = "1024";
+    static constexpr const char* CORRECT_PW = "1004";
     static constexpr int MAX_DIGITS = 4;
 };
